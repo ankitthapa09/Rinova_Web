@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
+import Toaster from "@/components/ui/Toaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,7 +38,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
-      <body className="bg-night font-sans text-cream antialiased">{children}</body>
+      <body className="bg-night font-sans text-cream antialiased">
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
