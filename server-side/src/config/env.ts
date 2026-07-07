@@ -18,7 +18,12 @@ const envSchema = z.object({
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
   // CORS — the browser origin allowed to call this API
-  CLIENT_URL: z.string().url().default('http://localhost:3000'),
+  // Comma-separated list of allowed browser origins
+  CLIENT_URL: z
+    .string()
+    .default('http://localhost:3000')
+    .transform((s) => s.split(',').map((url) => url.trim()))
+    .pipe(z.array(z.url())),
 
   // Email (SMTP) — optional in dev; auth flows degrade gracefully without it
   SMTP_HOST: z.string().optional(),

@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
+import { authApi, ApiError } from "@/lib/api";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^9[78]\d{8}$/;
 
 const STRENGTH_LABELS = ["", "Weak", "Fair", "Good", "Strong"];
 
@@ -24,6 +26,8 @@ function passwordScore(pw: string): number {
 interface Fields {
   name: string;
   email: string;
+  phone: string;
+  address: string;
   password: string;
   confirm: string;
 }
@@ -31,9 +35,17 @@ interface Fields {
 export default function SignupForm() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
-  const [fields, setFields] = useState<Fields>({ name: "", email: "", password: "", confirm: "" });
+  const [fields, setFields] = useState<Fields>({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    password: "",
+    confirm: "",
+  });
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms", string>>>({});
+  const [formError, setFormError] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
 
   const score = passwordScore(fields.password);
@@ -50,29 +62,47 @@ export default function SignupForm() {
     );
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status !== "idle") return;
 
     const next: typeof errors = {};
     if (fields.name.trim().length < 2) next.name = "Enter your full name.";
     if (!EMAIL_RE.test(fields.email)) next.email = "Enter a valid email address.";
+    if (!PHONE_RE.test(fields.phone)) next.phone = "Enter a valid 10-digit mobile (98XXXXXXXX).";
+    if (fields.address.trim().length < 3) next.address = "Enter your address.";
     if (fields.password.length < 8) next.password = "Use at least 8 characters.";
     if (fields.confirm !== fields.password || !fields.confirm)
       next.confirm = "Passwords don't match.";
     if (!terms) next.terms = "Please accept the terms to continue.";
     setErrors(next);
+    setFormError("");
     if (Object.keys(next).length > 0) {
       shake();
       return;
     }
 
-    // TODO(sprint2): POST to the server-side auth API
     setStatus("loading");
-    window.setTimeout(() => {
+    try {
+      await authApi.register({
+        name: fields.name.trim(),
+        email: fields.email,
+        phone: fields.phone,
+        address: fields.address.trim(),
+        password: fields.password,
+      });
       setStatus("success");
       window.setTimeout(() => router.push("/"), 900);
-    }, 1100);
+    } catch (err) {
+      setStatus("idle");
+      if (err instanceof ApiError) {
+        setErrors(err.fieldErrors);
+        if (Object.keys(err.fieldErrors).length === 0) setFormError(err.message);
+      } else {
+        setFormError("Something went wrong. Please try again.");
+      }
+      shake();
+    }
   };
 
   return (
@@ -93,6 +123,23 @@ export default function SignupForm() {
         value={fields.email}
         onChange={set("email")}
         error={errors.email}
+      />
+      <FloatingInput
+        id="phone"
+        label="Mobile number"
+        type="tel"
+        autoComplete="tel"
+        value={fields.phone}
+        onChange={set("phone")}
+        error={errors.phone}
+      />
+      <FloatingInput
+        id="address"
+        label="Address"
+        autoComplete="street-address"
+        value={fields.address}
+        onChange={set("address")}
+        error={errors.address}
       />
 
       <div>
@@ -156,6 +203,11 @@ export default function SignupForm() {
       </div>
 
       <div data-auth-item className="mt-1">
+        {formError ? (
+          <p role="alert" className="mb-4 text-sm text-accent">
+            {formError}
+          </p>
+        ) : null}
         <MagneticSubmit status={status} successLabel="You're in">
           Create Account
         </MagneticSubmit>

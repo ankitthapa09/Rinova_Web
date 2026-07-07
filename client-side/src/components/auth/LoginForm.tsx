@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
+import { authApi, ApiError } from "@/lib/api";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 
@@ -15,6 +16,7 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [formError, setFormError] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
 
   const shake = () => {
@@ -26,7 +28,7 @@ export default function LoginForm() {
     );
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status !== "idle") return;
 
@@ -34,17 +36,27 @@ export default function LoginForm() {
     if (!EMAIL_RE.test(email)) next.email = "Enter a valid email address.";
     if (!password) next.password = "Enter your password.";
     setErrors(next);
+    setFormError("");
     if (Object.keys(next).length > 0) {
       shake();
       return;
     }
 
-    // TODO(sprint2): POST to the server-side auth API
     setStatus("loading");
-    window.setTimeout(() => {
+    try {
+      await authApi.login({ email, password });
       setStatus("success");
       window.setTimeout(() => router.push("/"), 900);
-    }, 1100);
+    } catch (err) {
+      setStatus("idle");
+      if (err instanceof ApiError) {
+        setErrors(err.fieldErrors);
+        if (Object.keys(err.fieldErrors).length === 0) setFormError(err.message);
+      } else {
+        setFormError("Something went wrong. Please try again.");
+      }
+      shake();
+    }
   };
 
   return (
@@ -85,6 +97,11 @@ export default function LoginForm() {
       </div>
 
       <div data-auth-item className="mt-2">
+        {formError ? (
+          <p role="alert" className="mb-4 text-sm text-accent">
+            {formError}
+          </p>
+        ) : null}
         <MagneticSubmit status={status} successLabel="Welcome back">
           Sign In
         </MagneticSubmit>
