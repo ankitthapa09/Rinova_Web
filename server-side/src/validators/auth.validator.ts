@@ -1,0 +1,39 @@
+import { z } from 'zod';
+
+/**
+ * Request-body contracts for the auth endpoints. These run in the `validate`
+ * middleware before a request reaches the controller, so the layers below
+ * only ever see well-formed, typed input. Rules mirror the client-side form
+ * checks — the server is the one that actually enforces them.
+ */
+
+export const registerSchema = z.object({
+  name: z
+    .string({ error: 'Name is required' })
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(60, 'Name must be at most 60 characters'),
+  email: z.email('Enter a valid email address').trim().toLowerCase(),
+  phone: z
+    .string({ error: 'Contact number is required' })
+    .trim()
+    .regex(/^9[78]\d{8}$/, 'Enter a valid 10-digit mobile number (98XXXXXXXX)'),
+  address: z
+    .string({ error: 'Address is required' })
+    .trim()
+    .min(3, 'Address must be at least 3 characters')
+    .max(120, 'Address must be at most 120 characters'),
+  password: z
+    .string({ error: 'Password is required' })
+    .min(8, 'Password must be at least 8 characters')
+    // bcrypt only hashes the first 72 bytes — longer input would be silently truncated
+    .max(72, 'Password must be at most 72 characters'),
+});
+
+export const loginSchema = z.object({
+  email: z.email('Enter a valid email address').trim().toLowerCase(),
+  password: z.string({ error: 'Password is required' }).min(1, 'Enter your password'),
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
