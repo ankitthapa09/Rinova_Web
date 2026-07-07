@@ -14,7 +14,6 @@ const HeroScene = dynamic(() => import("./three/HeroScene"), { ssr: false });
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const badgeRef = useRef<HTMLDivElement>(null);
   const gl = useWebGL();
 
   useLayoutEffect(() => {
@@ -28,7 +27,6 @@ export default function Hero() {
       // Entrance: characters cascade in, then the stage and supporting copy
       const tl = gsap.timeline({ delay: 0.15, defaults: { ease: EASE } });
       tl.to(q(".split-char"), { y: 0, rotate: 0, duration: 1.15, stagger: 0.022 }, 0)
-        .fromTo(q("[data-hero-eyebrow]"), { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, 0.1)
         .fromTo(stageRef.current, { opacity: 0 }, { opacity: 1, duration: 1.8 }, 0.5)
         .fromTo(q("[data-hero-sub]"), { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, 0.7)
         .fromTo(
@@ -37,17 +35,11 @@ export default function Hero() {
           { y: 0, opacity: 1, duration: 0.9, stagger: 0.1 },
           0.85,
         )
-        .fromTo(q("[data-hero-bottom]"), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, 1.05)
-        .fromTo(badgeRef.current, { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.1 }, 0.9);
+        .fromTo(q("[data-hero-bottom]"), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9 }, 1.05);
 
-      // Glow orbs drift slower, badge faster (scroll parallax planes)
+      // Glow orbs drift slower on scroll (parallax planes)
       gsap.to(q("[data-hero-glow]"), {
         yPercent: 18,
-        ease: "none",
-        scrollTrigger: { trigger: section, start: "top top", end: "bottom top", scrub: true },
-      });
-      gsap.to(badgeRef.current, {
-        yPercent: -22,
         ease: "none",
         scrollTrigger: { trigger: section, start: "top top", end: "bottom top", scrub: true },
       });
@@ -90,32 +82,8 @@ export default function Hero() {
         />
       </div>
 
-      {/* Rotating badge */}
-      <div
-        ref={badgeRef}
-        aria-hidden
-        className="absolute right-[6%] top-[16%] hidden h-32 w-32 items-center justify-center lg:flex"
-      >
-        <svg viewBox="0 0 120 120" className="spin-slow absolute inset-0 h-full w-full">
-          <defs>
-            <path id="badge-circle" d="M60,60 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0" />
-          </defs>
-          <text className="fill-cream/60 text-[10.5px] uppercase [letter-spacing:0.22em]">
-            <textPath href="#badge-circle">Rent · Wash · Drive · Rinova · Kathmandu ·</textPath>
-          </text>
-        </svg>
-        <span className="h-2 w-2 rounded-full bg-accent shadow-[0_0_12px_rgba(255,92,26,0.9)]" />
-      </div>
-
       {/* Centered content over the stage */}
-      <div className="relative z-10 mx-auto flex w-full max-w-wrap flex-1 flex-col items-center px-6 pt-[14vh] text-center">
-        <p
-          data-hero-eyebrow
-          className="mb-7 text-[11px] font-medium uppercase tracking-[0.25em] text-fog"
-        >
-          Kathmandu · Est. 2025
-        </p>
-
+      <div className="relative z-10 mx-auto flex w-full max-w-wrap flex-1 flex-col items-center px-6 pt-[18vh] text-center">
         <h1 className="font-serif text-[clamp(3.2rem,9vw,8.5rem)] leading-[0.98] tracking-[-0.03em] text-cream">
           <span className="split-line" aria-label="Rent it. Wash it.">
             <SplitChars text="Rent it." />{" "}

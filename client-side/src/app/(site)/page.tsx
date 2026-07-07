@@ -1,7 +1,6 @@
 import SmoothScroll from "@/components/landing/SmoothScroll";
 import Cursor from "@/components/landing/Cursor";
 import Hero from "@/components/landing/Hero";
-import Marquee from "@/components/landing/Marquee";
 import Services from "@/components/landing/Services";
 import Fleet from "@/components/landing/Fleet";
 import WashPricing from "@/components/landing/WashPricing";
@@ -16,7 +15,6 @@ export default function Home() {
       <SmoothScroll />
       <Cursor />
       <Hero />
-      <Marquee />
       <Services />
       <Fleet />
       <WashPricing />

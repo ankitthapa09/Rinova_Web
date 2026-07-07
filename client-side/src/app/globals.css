@@ -158,24 +158,6 @@ body::after {
   background: radial-gradient(closest-side, rgba(255, 92, 26, 0.16), transparent);
 }
 
-/* ── Marquee ──────────────────────────────────────────────── */
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: marquee 30s linear infinite;
-}
-.marquee-track:hover {
-  animation-play-state: paused;
-}
-
 /* ── Hero scroll cue: dot travelling down a thin line ─────── */
 @keyframes cue-travel {
   0% {
@@ -195,16 +177,6 @@ body::after {
 }
 .scroll-cue-dot {
   animation: cue-travel 2.2s var(--ease-expo) infinite;
-}
-
-/* ── Rotating hero badge ──────────────────────────────────── */
-@keyframes spin-slow {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.spin-slow {
-  animation: spin-slow 26s linear infinite;
 }
 
 /* ── Nav link underline: draws left → right ───────────────── */
@@ -280,9 +252,7 @@ body::after {
   html {
     scroll-behavior: auto;
   }
-  .marquee-track,
   .scroll-cue-dot,
-  .spin-slow,
   .fleet-word {
     animation: none !important;
   }

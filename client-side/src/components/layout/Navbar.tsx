@@ -57,9 +57,12 @@ export default function Navbar() {
         </ul>
 
         {/* CTA */}
-        <div className="hidden lg:block">
-          <MagneticButton href="#contact" className="!px-6 !py-2.5 !text-[13px]">
-            Book Now
+        <div className="hidden items-center gap-7 lg:flex">
+          <Link href="/login" className="nav-link text-[13px] font-medium text-cream/70 hover:text-cream">
+            Sign In
+          </Link>
+          <MagneticButton href="/signup" className="!px-6 !py-2.5 !text-[13px]">
+            Join Now
           </MagneticButton>
         </div>
 
@@ -103,13 +106,19 @@ export default function Navbar() {
           }`}
         >
           <Link
-            href="#contact"
+            href="/login"
+            onClick={() => setOpen(false)}
+            className="inline-flex items-center justify-center rounded-full border border-cream/25 px-8 py-4 text-sm font-medium text-cream"
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/signup"
             onClick={() => setOpen(false)}
             className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-4 text-sm font-medium text-night"
           >
-            Book Now
+            Create Account
           </Link>
-          <p className="text-center text-xs tracking-[0.2em] text-fog">KATHMANDU · EST. 2025</p>
         </div>
       </div>
     </header>
