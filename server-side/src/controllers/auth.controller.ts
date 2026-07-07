@@ -1,5 +1,6 @@
 import type { Request, Response, CookieOptions } from 'express';
 import { authService } from '@/services/auth.service';
+import { userRepository } from '@/repositories/user.repository';
 import { catchAsync } from '@/utils/catchAsync';
 import { AppError } from '@/utils/AppError';
 import { env, isProd } from '@/config/env';
@@ -63,5 +64,13 @@ export const authController = {
   logout: catchAsync(async (_req: Request, res: Response) => {
     res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions, maxAge: undefined });
     res.status(200).json({ success: true, data: null });
+  }),
+
+  // Requires requireAuth before it in the chain.
+  me: catchAsync(async (req: Request, res: Response) => {
+    const user = await userRepository.findById(req.user!.sub);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+
+    res.status(200).json({ success: true, data: { user } });
   }),
 };
