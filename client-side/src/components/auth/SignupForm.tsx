@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
 import { authApi, ApiError } from "@/lib/api";
+import { toast } from "@/components/ui/toast";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 
@@ -45,7 +46,6 @@ export default function SignupForm() {
   });
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms", string>>>({});
-  const [formError, setFormError] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
 
   const score = passwordScore(fields.password);
@@ -76,7 +76,6 @@ export default function SignupForm() {
       next.confirm = "Passwords don't match.";
     if (!terms) next.terms = "Please accept the terms to continue.";
     setErrors(next);
-    setFormError("");
     if (Object.keys(next).length > 0) {
       shake();
       return;
@@ -84,7 +83,7 @@ export default function SignupForm() {
 
     setStatus("loading");
     try {
-      await authApi.register({
+      const user = await authApi.register({
         name: fields.name.trim(),
         email: fields.email,
         phone: fields.phone,
@@ -92,14 +91,15 @@ export default function SignupForm() {
         password: fields.password,
       });
       setStatus("success");
-      window.setTimeout(() => router.push("/"), 900);
+      toast.success(`Welcome to the garage, ${user.name.split(" ")[0]}.`);
+      window.setTimeout(() => router.push("/dashboard"), 900);
     } catch (err) {
       setStatus("idle");
       if (err instanceof ApiError) {
         setErrors(err.fieldErrors);
-        if (Object.keys(err.fieldErrors).length === 0) setFormError(err.message);
+        if (Object.keys(err.fieldErrors).length === 0) toast.error(err.message);
       } else {
-        setFormError("Something went wrong. Please try again.");
+        toast.error("Something went wrong. Please try again.");
       }
       shake();
     }
@@ -203,11 +203,6 @@ export default function SignupForm() {
       </div>
 
       <div data-auth-item className="mt-1">
-        {formError ? (
-          <p role="alert" className="mb-4 text-sm text-accent">
-            {formError}
-          </p>
-        ) : null}
         <MagneticSubmit status={status} successLabel="You're in">
           Create Account
         </MagneticSubmit>
