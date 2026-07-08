@@ -142,7 +142,7 @@ export default function Fleet() {
                   /day
                 </p>
                 <Link
-                  href="#contact"
+                  href={`/vehicles?category=${vehicle.id}`}
                   className="inline-flex items-center gap-2 text-sm font-medium text-accent transition-transform duration-300 hover:translate-x-1"
                 >
                   View vehicles <ArrowRight className="h-4 w-4" />

@@ -43,6 +43,12 @@ export default function VehiclesView() {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
 
+  // Landing showcase links here as /vehicles?category=suv — preset the filter
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get("category");
+    if (c && c in CATEGORY_LABELS) setFilter(c as VehicleCategory);
+  }, []);
+
   // Load the catalog once; filtering happens client-side on the loaded list
   useEffect(() => {
     let cancelled = false;
