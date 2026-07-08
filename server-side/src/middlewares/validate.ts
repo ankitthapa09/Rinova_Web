@@ -24,3 +24,26 @@ export function validate(schema: ZodType): RequestHandler {
     next();
   };
 }
+
+// Same idea for query strings. Express 5 makes req.query read-only, so the
+// parsed result lands on res.locals.query for the controller to read.
+export function validateQuery(schema: ZodType): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const result = schema.safeParse(req.query);
+
+    if (!result.success) {
+      res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+      return;
+    }
+
+    res.locals.query = result.data;
+    next();
+  };
+}
