@@ -92,7 +92,7 @@ export default function SignupForm() {
       });
       setStatus("success");
       toast.success(`Welcome to the garage, ${user.name.split(" ")[0]}.`);
-      window.setTimeout(() => router.push("/"), 900);
+      window.setTimeout(() => router.push("/dashboard"), 900);
     } catch (err) {
       setStatus("idle");
       if (err instanceof ApiError) {
