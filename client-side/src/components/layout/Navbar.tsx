@@ -15,7 +15,7 @@ function initials(name: string): string {
 }
 
 const LINKS = [
-  { label: "Fleet", href: "#fleet" },
+  { label: "Fleet", href: "/#fleet" },
   { label: "Washing", href: "#washing" },
   { label: "Pricing", href: "#pricing" },
   { label: "About", href: "#about" },
