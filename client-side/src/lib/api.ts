@@ -33,6 +33,20 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+// Non-sensitive flag so anonymous visitors don't fire doomed refresh calls
+// (and 401 console noise) on every page. The cookie stays the source of truth.
+const SESSION_HINT_KEY = "rinova:hasSession";
+
+export function hasSessionHint(): boolean {
+  return typeof window !== "undefined" && window.localStorage.getItem(SESSION_HINT_KEY) === "1";
+}
+
+export function setSessionHint(active: boolean): void {
+  if (typeof window === "undefined") return;
+  if (active) window.localStorage.setItem(SESSION_HINT_KEY, "1");
+  else window.localStorage.removeItem(SESSION_HINT_KEY);
+}
+
 interface ServerEnvelope<T> {
   success: boolean;
   data: T;
@@ -91,6 +105,7 @@ export const authApi = {
       body: JSON.stringify(input),
     });
     accessToken = data.accessToken;
+    setSessionHint(true);
     return data.user;
   },
 
@@ -100,18 +115,26 @@ export const authApi = {
       body: JSON.stringify(input),
     });
     accessToken = data.accessToken;
+    setSessionHint(true);
     return data.user;
   },
 
   async logout(): Promise<void> {
     await request<null>("/auth/logout", { method: "POST" });
     accessToken = null;
+    setSessionHint(false);
   },
 
   /** Restores a session from the refresh cookie (e.g. after a page reload). */
   async refresh(): Promise<void> {
-    const data = await request<{ accessToken: string }>("/auth/refresh", { method: "POST" });
-    accessToken = data.accessToken;
+    try {
+      const data = await request<{ accessToken: string }>("/auth/refresh", { method: "POST" });
+      accessToken = data.accessToken;
+      setSessionHint(true);
+    } catch (err) {
+      setSessionHint(false);
+      throw err;
+    }
   },
 
   me(): Promise<{ user: ApiUser }> {

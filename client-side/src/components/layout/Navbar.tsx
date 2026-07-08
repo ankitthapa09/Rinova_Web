@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import MagneticButton from "@/components/landing/MagneticButton";
+import { useAuth } from "@/lib/useAuth";
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 const LINKS = [
   { label: "Fleet", href: "#fleet" },
@@ -16,6 +25,7 @@ const LINKS = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { user, loading } = useAuth(true);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -56,14 +66,26 @@ export default function Navbar() {
           ))}
         </ul>
 
-        {/* CTA */}
+        {/* CTA / avatar */}
         <div className="hidden items-center gap-7 lg:flex">
-          <Link href="/login" className="nav-link text-[13px] font-medium text-cream/70 hover:text-cream">
-            Sign In
-          </Link>
-          <MagneticButton href="/signup" className="!px-6 !py-2.5 !text-[13px]">
-            Join Now
-          </MagneticButton>
+          {loading ? null : user ? (
+            <Link
+              href="/dashboard"
+              title={`${user.name} — dashboard`}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-[13px] font-medium text-night transition-shadow duration-300 hover:shadow-glow"
+            >
+              {initials(user.name)}
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="nav-link text-[13px] font-medium text-cream/70 hover:text-cream">
+                Sign In
+              </Link>
+              <MagneticButton href="/signup" className="!px-6 !py-2.5 !text-[13px]">
+                Join Now
+              </MagneticButton>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -105,20 +127,35 @@ export default function Navbar() {
             open ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
           }`}
         >
-          <Link
-            href="/login"
-            onClick={() => setOpen(false)}
-            className="inline-flex items-center justify-center rounded-full border border-cream/25 px-8 py-4 text-sm font-medium text-cream"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/signup"
-            onClick={() => setOpen(false)}
-            className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-4 text-sm font-medium text-night"
-          >
-            Create Account
-          </Link>
+          {user ? (
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center justify-center gap-3 rounded-full bg-accent px-8 py-4 text-sm font-medium text-night"
+            >
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-night/15 text-[11px]">
+                {initials(user.name)}
+              </span>
+              My Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center justify-center rounded-full border border-cream/25 px-8 py-4 text-sm font-medium text-cream"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                onClick={() => setOpen(false)}
+                className="inline-flex items-center justify-center rounded-full bg-accent px-8 py-4 text-sm font-medium text-night"
+              >
+                Create Account
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
