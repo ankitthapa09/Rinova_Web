@@ -25,6 +25,12 @@ const envSchema = z.object({
   ADMIN_PHONE: z.string().default('9800000000'),
   ADMIN_ADDRESS: z.string().default('Kathmandu, Nepal'),
 
+  // Cloudinary — media storage for vehicle photos and 3D models.
+  
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+
   // CORS — the browser origin allowed to call this API
   // Comma-separated list of allowed browser origins
   CLIENT_URL: z
