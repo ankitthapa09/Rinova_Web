@@ -17,6 +17,14 @@ const envSchema = z.object({
   // Security
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
+  // Admin seed — credentials for the `seed:admin` script.
+
+  ADMIN_EMAIL: z.string().optional(),
+  ADMIN_PASSWORD: z.string().optional(),
+  ADMIN_NAME: z.string().default('Rinova Admin'),
+  ADMIN_PHONE: z.string().default('9800000000'),
+  ADMIN_ADDRESS: z.string().default('Kathmandu, Nepal'),
+
   // CORS — the browser origin allowed to call this API
   // Comma-separated list of allowed browser origins
   CLIENT_URL: z
@@ -45,7 +53,7 @@ if (!parsed.success) {
     .map((issue) => `  • ${issue.path.join('.')}: ${issue.message}`)
     .join('\n');
   // Logger isn't available this early — it depends on validated config itself.
-  console.error(`\n❌ Invalid environment configuration:\n${issues}\n`);
+  console.error(`\n Invalid environment configuration:\n${issues}\n`);
   process.exit(1);
 }
 
