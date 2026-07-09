@@ -20,14 +20,14 @@ const RULES: Record<
     mimes: new Set(['image/png', 'image/jpeg', 'image/webp']),
     exts: new Set(['.png', '.jpg', '.jpeg', '.webp']),
     maxBytes: 5 * 1024 * 1024, // 5 MB
-    label: 'image (PNG, JPG, or WEBP)',
+    label: 'an image (PNG, JPG, or WEBP)',
   },
   model: {
     
     mimes: new Set(['model/gltf-binary', 'application/octet-stream']),
     exts: new Set(['.glb']),
     maxBytes: 20 * 1024 * 1024, // 20 MB (our largest model is ~9 MB)
-    label: '3D model (GLB)',
+    label: 'a 3D model (GLB)',
   },
 };
 
@@ -49,7 +49,7 @@ const multerUpload = multer({
     const rule = RULES[kind];
     const ext = path.extname(file.originalname).toLowerCase();
     if (!rule.exts.has(ext) || !rule.mimes.has(file.mimetype)) {
-      return cb(new AppError(400, `Upload must be a ${rule.label}`));
+      return cb(new AppError(400, `Upload must be ${rule.label}`));
     }
     cb(null, true);
   },
@@ -78,7 +78,7 @@ export function uploadSingle(field = 'file') {
       const rule = RULES[kind];
       if (req.file.size > rule.maxBytes) {
         const mb = Math.round(rule.maxBytes / (1024 * 1024));
-        return next(AppError.badRequest(`${rule.label} must be under ${mb} MB`));
+        return next(AppError.badRequest(`That ${kind} must be under ${mb} MB`));
       }
 
       next();
