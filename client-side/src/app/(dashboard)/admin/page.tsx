@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AdminView from "@/components/admin/AdminView";
+import AdminOverview from "@/components/admin/AdminOverview";
 
 export const metadata: Metadata = {
   title: "Admin — Rinova",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminPage() {
-  return <AdminView />;
+  return <AdminOverview />;
 }
