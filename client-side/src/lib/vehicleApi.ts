@@ -16,9 +16,12 @@ export interface Vehicle {
     topSpeed?: string;
   };
   imageUrl: string;
-  modelUrl: string;
-  /** Normalized world length for the shared 3D loader */
-  modelLength: number;
+  /** Photo gallery, up to 4 — images[0] is the cover and mirrors imageUrl */
+  images: string[];
+  /** Optional 3D showcase — detail page falls back to the cover photo without it */
+  modelUrl?: string;
+  /** Normalized world length for the shared 3D loader (only with modelUrl) */
+  modelLength?: number;
   featured?: boolean;
   description: string;
   /** false = pulled from the public listing without being deleted */
@@ -41,8 +44,10 @@ export interface VehicleInput {
     topSpeed?: string;
   };
   imageUrl: string;
-  modelUrl: string;
-  modelLength: number;
+  /** Optional gallery (max 4) — the first entry becomes the cover */
+  images?: string[];
+  modelUrl?: string;
+  modelLength?: number;
   featured?: boolean;
   description: string;
   isAvailable?: boolean;

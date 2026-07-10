@@ -5,7 +5,8 @@ import { Vehicle, type IVehicle } from '@/models/vehicle.model';
  
  // Run with:  npm run seed:vehicles
  
-type SeedVehicle = Omit<IVehicle, 'createdAt' | 'updatedAt' | 'isAvailable' | 'featured'> & {
+// `images` is omitted too — the model's sync hook derives it from imageUrl.
+type SeedVehicle = Omit<IVehicle, 'createdAt' | 'updatedAt' | 'isAvailable' | 'featured' | 'images'> & {
   featured?: boolean;
 };
 

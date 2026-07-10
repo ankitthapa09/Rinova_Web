@@ -19,14 +19,18 @@ const RULES: Record<
   image: {
     mimes: new Set(['image/png', 'image/jpeg', 'image/webp']),
     exts: new Set(['.png', '.jpg', '.jpeg', '.webp']),
-    maxBytes: 5 * 1024 * 1024, // 5 MB
+    // 10 MB — the Cloudinary free-plan ceiling. Never set this above the plan
+    // limit, or oversize files pass our check then fail at Cloudinary with a 500.
+    maxBytes: 10 * 1024 * 1024,
     label: 'an image (PNG, JPG, or WEBP)',
   },
   model: {
     
     mimes: new Set(['model/gltf-binary', 'application/octet-stream']),
     exts: new Set(['.glb']),
-    maxBytes: 20 * 1024 * 1024, // 20 MB (our largest model is ~9 MB)
+    // Models may arrive large — the upload service Draco-compresses them before
+    // storage, so only the compressed result must fit Cloudinary's 10 MB cap.
+    maxBytes: 50 * 1024 * 1024,
     label: 'a 3D model (GLB)',
   },
 };
@@ -64,7 +68,8 @@ export function uploadSingle(field = 'file') {
       if (err) {
         if (err instanceof MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
-            return next(AppError.badRequest('File is too large'));
+            const mb = Math.round(MAX_ANY_BYTES / (1024 * 1024));
+            return next(AppError.badRequest(`File is too large — uploads are limited to ${mb} MB.`));
           }
           return next(AppError.badRequest(`Upload error: ${err.message}`));
         }

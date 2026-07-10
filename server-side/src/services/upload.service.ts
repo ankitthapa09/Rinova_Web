@@ -1,6 +1,8 @@
 import { Readable } from 'node:stream';
 import { v2 as cloudinary, type UploadApiResponse } from 'cloudinary';
+import { processGlb } from 'gltf-pipeline';
 import { env } from '@/config/env';
+import { logger } from '@/config/logger';
 import { AppError } from '@/utils/AppError';
 import type { UploadKind } from '@/middlewares/upload';
 
@@ -8,13 +10,12 @@ import type { UploadKind } from '@/middlewares/upload';
  * Media storage via Cloudinary. Buffers come straight from the upload
  * middleware (held in memory, already type/size validated) and are streamed
  * up without ever touching our disk. The API secret lives only here on the
- * server — the browser never sees it.
+ * server, the browser never sees it.
  */
 
 let configured = false;
 
-// Configure lazily on first use, not at import time: the API can boot without
-// Cloudinary credentials, and only an actual upload should require them.
+
 function ensureConfigured(): void {
   if (configured) return;
 
@@ -37,11 +38,66 @@ export interface UploadResult {
   publicId: string;
 }
 
+
+const STORAGE_LIMIT_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Structural GLB check (magic bytes, version, chunk layout) — proves the bytes
+ * really are a GLB without depending on the compressor, so renamed junk files
+ * get a clean 400 instead of being stored.
+ */
+function assertValidGlb(buffer: Buffer): void {
+  const bad = () => AppError.badRequest('That file is not a valid GLB model');
+  if (buffer.length < 20) throw bad();
+  if (buffer.toString('latin1', 0, 4) !== 'glTF') throw bad(); // magic
+  if (buffer.readUInt32LE(4) !== 2) throw bad(); // glTF version
+  if (buffer.readUInt32LE(8) !== buffer.length) throw bad(); // declared length
+  const chunkLen = buffer.readUInt32LE(12);
+  if (buffer.toString('latin1', 16, 20) !== 'JSON' || 20 + chunkLen > buffer.length) throw bad();
+  try {
+    JSON.parse(buffer.toString('utf8', 20, 20 + chunkLen));
+  } catch {
+    throw bad();
+  }
+}
+
+/**
+ * Draco-compresses a GLB (typically 60–80% smaller) so large models fit the
+ * storage limit and load faster in the browser. Best-effort: models that are
+ * already Draco-compressed crash gltf-pipeline — those pass through as-is.
+ */
+async function compressModel(buffer: Buffer): Promise<Buffer> {
+  assertValidGlb(buffer);
+  try {
+    const { glb } = await processGlb(buffer, { dracoOptions: { compressionLevel: 7 } });
+    logger.info('model compressed', {
+      beforeMB: (buffer.length / 1048576).toFixed(1),
+      afterMB: (glb.length / 1048576).toFixed(1),
+    });
+    // Compression occasionally grows tiny files — keep whichever is smaller.
+    return glb.length < buffer.length ? glb : buffer;
+  } catch {
+    logger.warn('glb compression skipped (likely already compressed)', {
+      sizeMB: (buffer.length / 1048576).toFixed(1),
+    });
+    return buffer;
+  }
+}
+
 export const uploadService = {
   async uploadMedia(buffer: Buffer, kind: UploadKind): Promise<UploadResult> {
     ensureConfigured();
 
-    // Photos are true images; GLB models are opaque binaries → Cloudinary 'raw'.
+    if (kind === 'model') {
+      buffer = await compressModel(buffer);
+      if (buffer.length > STORAGE_LIMIT_BYTES) {
+        throw AppError.badRequest(
+          'Even after compression this model exceeds the 10 MB storage limit — simplify the model and try again',
+        );
+      }
+    }
+
+    // Photos are true images; GLB models are opaque binaries -> Cloudinary 'raw'.
     const resourceType = kind === 'image' ? 'image' : 'raw';
     const folder = kind === 'image' ? 'rinova/vehicles/photos' : 'rinova/vehicles/models';
 
@@ -50,7 +106,18 @@ export const uploadService = {
         { folder, resource_type: resourceType },
         (error, response) => {
           if (error || !response) {
-            return reject(error ?? new AppError(502, 'Media upload failed'));
+            // Cloudinary rejections (size, format, plan limits) arrive as plain
+            // objects — wrap them in an AppError so the client gets a clean
+            // message and status instead of a bare 500 "Unknown error".
+            if (error) {
+              const httpCode = typeof error.http_code === 'number' ? error.http_code : 502;
+              const status = httpCode >= 400 && httpCode < 500 ? httpCode : 502;
+              const message = /file size too large/i.test(error.message ?? '')
+                ? 'That file is too large — uploads are limited to 10 MB.'
+                : error.message || 'Media upload failed';
+              return reject(new AppError(status, message));
+            }
+            return reject(new AppError(502, 'Media upload failed'));
           }
           resolve(response);
         },
