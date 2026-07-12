@@ -39,6 +39,19 @@ export const bookingRepository = {
       .exec();
   },
 
+  /** The user's live booking (pending or confirmed) for a vehicle, if any —
+   *  one active booking per vehicle per customer. */
+  findActiveForUserVehicle(
+    userId: string,
+    vehicleId: Types.ObjectId,
+  ): Promise<BookingDocument | null> {
+    return Booking.findOne({
+      user: userId,
+      vehicle: vehicleId,
+      status: { $in: ['pending', 'confirmed'] },
+    }).exec();
+  },
+
   /**
    * The availability check: does this vehicle have a confirmed booking that
    * touches [start, end)? Two ranges overlap when each starts before the

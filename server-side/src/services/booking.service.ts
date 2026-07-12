@@ -17,6 +17,12 @@ export const bookingService = {
     const vehicle = await vehicleRepository.findBySlug(input.vehicleSlug);
     if (!vehicle || !vehicle.isAvailable) throw AppError.notFound('Vehicle not found');
 
+    // One live booking per vehicle per customer — cancel it first to rebook.
+    const existing = await bookingRepository.findActiveForUserVehicle(userId, vehicle._id);
+    if (existing) {
+      throw AppError.conflict('You already have an active booking for this vehicle');
+    }
+
     // Confirmed bookings block the calendar; pending requests don't.
     const clash = await bookingRepository.hasConfirmedOverlap(
       vehicle._id,
