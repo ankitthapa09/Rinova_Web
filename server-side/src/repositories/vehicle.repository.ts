@@ -2,8 +2,9 @@ import { Vehicle, type IVehicle, type VehicleDocument, type VehicleCategory } fr
 
 // Data-access layer for vehicles — the only place that queries the Vehicle model.
 
-export type CreateVehicleData = Omit<IVehicle, 'createdAt' | 'updatedAt' | 'featured' | 'isAvailable'> &
-  Partial<Pick<IVehicle, 'featured' | 'isAvailable'>>;
+// `images` is optional — the model hook derives it from imageUrl when absent.
+export type CreateVehicleData = Omit<IVehicle, 'createdAt' | 'updatedAt' | 'featured' | 'isAvailable' | 'images'> &
+  Partial<Pick<IVehicle, 'featured' | 'isAvailable' | 'images'>>;
 
 export type UpdateVehicleData = Partial<Omit<IVehicle, 'createdAt' | 'updatedAt'>>;
 
@@ -36,8 +37,11 @@ export const vehicleRepository = {
     return Vehicle.exists({ slug }).then((res) => res !== null);
   },
 
-  updateById(id: string, data: UpdateVehicleData): Promise<VehicleDocument | null> {
-    return Vehicle.findByIdAndUpdate(id, { $set: data }, { new: true, runValidators: true }).exec();
+  async updateById(id: string, data: UpdateVehicleData): Promise<VehicleDocument | null> {
+    const vehicle = await Vehicle.findById(id).exec();
+    if (!vehicle) return null;
+    vehicle.set(data);
+    return vehicle.save();
   },
 
   deleteById(id: string): Promise<VehicleDocument | null> {

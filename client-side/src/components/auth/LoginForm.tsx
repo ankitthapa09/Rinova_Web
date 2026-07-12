@@ -46,7 +46,9 @@ export default function LoginForm() {
       const user = await authApi.login({ email, password });
       setStatus("success");
       toast.success(`Welcome back, ${user.name.split(" ")[0]}.`);
-      window.setTimeout(() => router.push("/dashboard"), 900);
+      // Admins land on the admin panel; everyone else on their dashboard.
+      const destination = user.role === "admin" ? "/admin" : "/dashboard";
+      window.setTimeout(() => router.push(destination), 900);
     } catch (err) {
       setStatus("idle");
       if (err instanceof ApiError) {

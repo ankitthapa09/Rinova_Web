@@ -17,9 +17,12 @@ export interface IVehicle {
     topSpeed?: string;
   };
   imageUrl: string;
-  modelUrl: string;
-  /** Normalized world length for the client's 3D loader */
-  modelLength: number;
+  /** Photo gallery, up to 4 — images[0] is the cover and mirrors imageUrl */
+  images: string[];
+  /** Optional 3D showcase — detail page falls back to the cover photo without it */
+  modelUrl?: string;
+  /** Normalized world length for the client's 3D loader (only with modelUrl) */
+  modelLength?: number;
   featured: boolean;
   description: string;
   /** Admin can pull a vehicle from listing without deleting it */
@@ -77,14 +80,20 @@ const vehicleSchema = new Schema<IVehicle, VehicleModel>(
       required: [true, 'Image URL is required'],
       trim: true,
     },
+    images: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (arr: string[]) => arr.length <= 4,
+        message: 'A vehicle can have at most 4 photos',
+      },
+    },
     modelUrl: {
       type: String,
-      required: [true, '3D model URL is required'],
       trim: true,
     },
     modelLength: {
       type: Number,
-      required: [true, 'Model length is required'],
       min: 0.5,
       max: 20,
     },
@@ -114,5 +123,14 @@ const vehicleSchema = new Schema<IVehicle, VehicleModel>(
     },
   },
 );
+
+
+vehicleSchema.pre('validate', function syncImages() {
+  if (this.images.length > 0) {
+    this.imageUrl = this.images[0] as string;
+  } else if (this.imageUrl) {
+    this.images = [this.imageUrl];
+  }
+});
 
 export const Vehicle = model<IVehicle, VehicleModel>('Vehicle', vehicleSchema);

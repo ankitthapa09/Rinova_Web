@@ -1,8 +1,9 @@
-
+import { request, BASE_URL, getAccessToken, ApiError } from "@/lib/api";
 
 export type VehicleCategory = "bike" | "car" | "suv" | "van" | "bus";
 
 export interface Vehicle {
+  _id: string;
   slug: string;
   name: string;
   category: VehicleCategory;
@@ -15,11 +16,41 @@ export interface Vehicle {
     topSpeed?: string;
   };
   imageUrl: string;
-  modelUrl: string;
-  /** Normalized world length for the shared 3D loader */
-  modelLength: number;
+  /** Photo gallery, up to 4 — images[0] is the cover and mirrors imageUrl */
+  images: string[];
+  /** Optional 3D showcase — detail page falls back to the cover photo without it */
+  modelUrl?: string;
+  /** Normalized world length for the shared 3D loader (only with modelUrl) */
+  modelLength?: number;
   featured?: boolean;
   description: string;
+  /** false = pulled from the public listing without being deleted */
+  isAvailable: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Everything an admin supplies when creating/editing a vehicle. The slug is
+ * generated server-side from the name and is never sent. */
+export interface VehicleInput {
+  name: string;
+  category: VehicleCategory;
+  tagline: string;
+  pricePerDay: number;
+  specs: {
+    seats?: number;
+    transmission?: "Manual" | "Automatic";
+    fuel: string;
+    topSpeed?: string;
+  };
+  imageUrl: string;
+  /** Optional gallery (max 4) — the first entry becomes the cover */
+  images?: string[];
+  modelUrl?: string;
+  modelLength?: number;
+  featured?: boolean;
+  description: string;
+  isAvailable?: boolean;
 }
 
 export const CATEGORY_LABELS: Record<VehicleCategory, string> = {
@@ -34,119 +65,85 @@ export function formatNpr(amount: number): string {
   return `Rs. ${amount.toLocaleString("en-IN")}`;
 }
 
-// Mock catalog 
-
-const MOCK_VEHICLES: Vehicle[] = [
-  {
-    slug: "city-scooter",
-    name: "City Scooter",
-    category: "bike",
-    tagline: "The daily Kathmandu weaver",
-    pricePerDay: 800,
-    specs: { seats: 2, transmission: "Automatic", fuel: "Petrol", topSpeed: "85 km/h" },
-    imageUrl: "/vehicles/city-scooter.png",
-    modelUrl: "/models/scooter.glb",
-    modelLength: 2.4,
-    description:
-      "Light, nimble, and easy on fuel — the fastest way through Ring Road traffic and tight gallis alike.",
-  },
-  {
-    slug: "honda-cb750",
-    name: "Honda CB750",
-    category: "bike",
-    tagline: "The original superbike, 1970 spirit",
-    pricePerDay: 3200,
-    specs: { seats: 2, transmission: "Manual", fuel: "Petrol", topSpeed: "200 km/h" },
-    imageUrl: "/vehicles/honda-cb750.png",
-    modelUrl: "/models/honda_cb750.glb",
-    modelLength: 2.6,
-    featured: true,
-    description:
-      "A classic inline-four with presence. For riders who want the highway to Pokhara to feel like an occasion.",
-  },
-  {
-    slug: "azure-convertible",
-    name: "Azure Convertible",
-    category: "car",
-    tagline: "Top down, valley views",
-    pricePerDay: 2200,
-    specs: { seats: 4, transmission: "Automatic", fuel: "Petrol", topSpeed: "180 km/h" },
-    imageUrl: "/vehicles/blue-convertible.png",
-    modelUrl: "/models/car.glb",
-    modelLength: 3.9,
-    description:
-      "The one from our showroom floor — a comfortable open-top cruiser for city errands and weekend escapes.",
-  },
-  {
-    slug: "lamborghini-gallardo",
-    name: "Lamborghini Gallardo Spyder",
-    category: "car",
-    tagline: "LP560-4. Enough said.",
-    pricePerDay: 25000,
-    specs: { seats: 2, transmission: "Automatic", fuel: "Petrol", topSpeed: "324 km/h" },
-    imageUrl: "/vehicles/lamborghini-gallardo.png",
-    modelUrl: "/models/lamborghini_gallardo.glb",
-    modelLength: 4.3,
-    featured: true,
-    description:
-      "A 5.2L V10 with the roof off. Our crown jewel — driven rarely, washed obsessively, rented by the brave.",
-  },
-  {
-    slug: "trail-suv",
-    name: "Trail SUV",
-    category: "suv",
-    tagline: "Built for the hills",
-    pricePerDay: 3500,
-    specs: { seats: 7, transmission: "Manual", fuel: "Diesel", topSpeed: "160 km/h" },
-    imageUrl: "/vehicles/trail-suv.png",
-    modelUrl: "/models/suv.glb",
-    modelLength: 3.9,
-    description:
-      "High clearance and seven seats — the default answer for Mustang roads, monsoon potholes, and family trips.",
-  },
-  {
-    slug: "family-van",
-    name: "Family Van",
-    category: "van",
-    tagline: "Group journeys, sorted",
-    pricePerDay: 5000,
-    specs: { seats: 8, transmission: "Manual", fuel: "Diesel", topSpeed: "140 km/h" },
-    imageUrl: "/vehicles/family-van.png",
-    modelUrl: "/models/van.glb",
-    modelLength: 4.1,
-    description:
-      "Room for the whole crew and the luggage they swore they wouldn't bring. Airport runs to week-long tours.",
-  },
-  {
-    slug: "tour-bus",
-    name: "Tour Bus",
-    category: "bus",
-    tagline: "Events & full-scale tours",
-    pricePerDay: 9000,
-    specs: { seats: 25, transmission: "Manual", fuel: "Diesel", topSpeed: "120 km/h" },
-    imageUrl: "/vehicles/tour-bus.png",
-    modelUrl: "/models/bus.glb",
-    modelLength: 5.2,
-    description:
-      "For weddings, office outings, and trekking groups — one vehicle, everyone together, driver included.",
-  },
-];
-
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+export type UploadKind = "image" | "model";
 
 export const vehicleApi = {
-  
+  // ── Public ─────────────────────────────────────────────
   async list(category?: VehicleCategory): Promise<Vehicle[]> {
-    await delay(350);
-    return category ? MOCK_VEHICLES.filter((v) => v.category === category) : [...MOCK_VEHICLES];
+    const qs = category ? `?category=${category}` : "";
+    const { vehicles } = await request<{ vehicles: Vehicle[] }>(`/vehicles${qs}`);
+    return vehicles;
   },
 
-  
   async get(slug: string): Promise<Vehicle | null> {
-    await delay(250);
-    return MOCK_VEHICLES.find((v) => v.slug === slug) ?? null;
+    try {
+      const { vehicle } = await request<{ vehicle: Vehicle }>(`/vehicles/${slug}`);
+      return vehicle;
+    } catch (err) {
+      // A missing/unlisted vehicle 404s — surface that as null, as callers expect.
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
+  },
+
+  // ── Admin (all gated by requireRole('admin') on the server) ──
+  async listAll(): Promise<Vehicle[]> {
+    const { vehicles } = await request<{ vehicles: Vehicle[] }>("/vehicles/all");
+    return vehicles;
+  },
+
+  async create(input: VehicleInput): Promise<Vehicle> {
+    const { vehicle } = await request<{ vehicle: Vehicle }>("/vehicles", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return vehicle;
+  },
+
+  async update(id: string, input: Partial<VehicleInput>): Promise<Vehicle> {
+    const { vehicle } = await request<{ vehicle: Vehicle }>(`/vehicles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    return vehicle;
+  },
+
+  async remove(id: string): Promise<void> {
+    await request<null>(`/vehicles/${id}`, { method: "DELETE" });
+  },
+
+  /**
+   * Uploads one file (photo or GLB) to the admin media endpoint and returns its
+   * hosted URL. Can't use `request` — multipart needs the browser to set its own
+   * Content-Type boundary, so this does a direct fetch and mirrors the same
+   * envelope/error handling.
+   */
+  async uploadFile(kind: UploadKind, file: File): Promise<{ url: string; publicId: string }> {
+    const form = new FormData();
+    form.append("file", file);
+    const token = getAccessToken();
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/uploads/${kind}`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+    } catch {
+      throw new ApiError(0, "Can't reach the server. Is it running?");
+    }
+
+    const json = (await res.json().catch(() => null)) as
+      | { success: boolean; data: { url: string; publicId: string }; message?: string; errors?: { field: string; message: string }[] }
+      | null;
+
+    if (!res.ok || !json?.success) {
+      const fieldErrors = Object.fromEntries((json?.errors ?? []).map((e) => [e.field, e.message]));
+      throw new ApiError(res.status, json?.message ?? "Upload failed", fieldErrors);
+    }
+
+    return json.data;
   },
 };

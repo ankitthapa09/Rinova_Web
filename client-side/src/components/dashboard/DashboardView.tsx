@@ -294,13 +294,17 @@ export default function DashboardView() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
       toast.error("Please sign in to view your dashboard.");
       router.replace("/login");
+    } else if (user.role === "admin") {
+      // Admins have their own home — keep the two dashboards from mixing.
+      router.replace("/admin");
     }
   }, [loading, user, router]);
 
-  if (loading || !user) {
+  if (loading || !user || user.role === "admin") {
     return (
       <div className="flex min-h-[100svh] items-center justify-center">
         <p className="animate-pulse font-serif text-xl tracking-[0.08em] text-fog">RINOVA</p>

@@ -138,6 +138,10 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
     }, 1100);
   };
 
+  // Gallery: uploaded photos, falling back to the single cover for vehicles
+  // saved before multi-photo support.
+  const photos = vehicle ? (vehicle.images?.length ? vehicle.images : [vehicle.imageUrl]) : [];
+
   const specRows = vehicle
     ? ([
         vehicle.specs.seats ? { icon: Users, label: "Seats", value: `${vehicle.specs.seats}` } : null,
@@ -171,10 +175,11 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
           <NotFound />
         ) : (
           <div className="mt-8 grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
-            {/* ── 3D stage ─────────────────────────────────────── */}
+            {/* ── 3D stage + photo gallery ─────────────────────── */}
+            <div className="lg:sticky lg:top-28 lg:self-start">
             <div
               data-detail-stage
-              className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-line bg-surface/40 lg:sticky lg:top-28 lg:self-start"
+              className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-line bg-surface/40"
             >
               <span
                 aria-hidden
@@ -182,8 +187,8 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
               >
                 {CATEGORY_LABELS[vehicle.category].toUpperCase()}
               </span>
-              {gl?.webgl ? (
-                <VehicleStage url={vehicle.modelUrl} length={vehicle.modelLength} animate={gl.animate} />
+              {gl?.webgl && vehicle.modelUrl ? (
+                <VehicleStage url={vehicle.modelUrl} length={vehicle.modelLength ?? 3.5} animate={gl.animate} />
               ) : gl ? (
                 <Image
                   src={vehicle.imageUrl}
@@ -194,8 +199,29 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
                 />
               ) : null}
               <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-line bg-night/70 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.15em] text-fog backdrop-blur-sm">
-                {gl?.webgl ? "Live 3D · follows your cursor" : "Studio shot"}
+                {gl?.webgl && vehicle.modelUrl ? "Live 3D · follows your cursor" : "Studio shot"}
               </span>
+            </div>
+
+            {/* Photo gallery — uploaded shots below the 3D stage */}
+            {photos.length > 0 ? (
+              <div data-detail-item className="mt-4 grid grid-cols-4 gap-3">
+                {photos.map((src, i) => (
+                  <div
+                    key={`${src}-${i}`}
+                    className="relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-surface/40"
+                  >
+                    <Image
+                      src={src}
+                      alt={`${vehicle.name} — photo ${i + 1}`}
+                      fill
+                      sizes="(max-width: 1024px) 23vw, 13vw"
+                      className="object-cover transition-transform duration-500 ease-expo hover:scale-105"
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : null}
             </div>
 
             {/* ── Facts + booking ──────────────────────────────── */}

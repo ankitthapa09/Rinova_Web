@@ -20,8 +20,15 @@ export const createVehicleSchema = z.object({
   pricePerDay: z.coerce.number({ error: 'Price per day is required' }).min(0),
   specs: specsSchema,
   imageUrl: z.string({ error: 'Image URL is required' }).trim().min(1),
-  modelUrl: z.string({ error: '3D model URL is required' }).trim().min(1),
-  modelLength: z.coerce.number({ error: 'Model length is required' }).min(0.5).max(20),
+  // Optional photo gallery — images[0] becomes the cover (the model keeps
+  // imageUrl in sync). Capped at 4 to match the schema rule.
+  images: z
+    .array(z.string().trim().min(1, 'Image URLs cannot be empty'))
+    .max(4, 'A vehicle can have at most 4 photos')
+    .optional(),
+  // 3D model is optional — vehicles without one show their cover photo instead
+  modelUrl: z.string().trim().min(1).optional(),
+  modelLength: z.coerce.number().min(0.5).max(20).optional(),
   featured: z.boolean().optional(),
   description: z.string({ error: 'Description is required' }).trim().min(10).max(500),
   isAvailable: z.boolean().optional(),
