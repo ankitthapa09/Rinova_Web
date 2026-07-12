@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { CarFront, CalendarRange, ShieldCheck, Plus, ArrowRight } from "lucide-react";
+import { CarFront, CalendarRange, ShieldCheck, ArrowRight } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import { vehicleApi } from "@/lib/vehicleApi";
+import { userApi } from "@/lib/userApi";
 import { useAdminUser } from "@/components/admin/AdminShell";
 
 function greeting(): string {
@@ -83,6 +84,7 @@ export default function AdminOverview() {
   const user = useAdminUser();
   const rootRef = useRef<HTMLDivElement>(null);
   const [fleetSize, setFleetSize] = useState<number | null>(null);
+  const [customerCount, setCustomerCount] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -97,7 +99,7 @@ export default function AdminOverview() {
     return () => mm.revert();
   }, []);
 
-  // Fleet size is live from the vehicle API — becomes real the moment vehicles exist.
+  // Live stats — fleet size (public API) and customer count (admin API).
   useEffect(() => {
     let cancelled = false;
     vehicleApi
@@ -107,6 +109,14 @@ export default function AdminOverview() {
       })
       .catch(() => {
         if (!cancelled) setFleetSize(null);
+      });
+    userApi
+      .list()
+      .then((users) => {
+        if (!cancelled) setCustomerCount(users.filter((u) => u.role !== "admin").length);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerCount(null);
       });
     return () => {
       cancelled = true;
@@ -130,7 +140,7 @@ export default function AdminOverview() {
       <section className="mt-10 grid gap-4 sm:grid-cols-3">
         <StatCard label="Fleet Size" value={fleetSize ?? "—"} hint="Vehicles listed for rent" />
         <StatCard label="Active Bookings" value="0" hint="Awaiting the bookings API" />
-        <StatCard label="Customers" value="—" hint="Awaiting the customers API" />
+        <StatCard label="Customers" value={customerCount ?? "—"} hint="Registered accounts" />
       </section>
 
       <section className="mt-10">

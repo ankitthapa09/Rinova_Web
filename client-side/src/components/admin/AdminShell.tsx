@@ -48,7 +48,7 @@ const NAV: NavItem[] = [
   { label: "Vehicles", href: "/admin/vehicles", icon: CarFront },
   { label: "Rental Bookings", href: "/admin/rentals", icon: CalendarRange, soon: true },
   { label: "Wash Orders", href: "/admin/washes", icon: Droplets, soon: true },
-  { label: "Customers", href: "/admin/customers", icon: Users, soon: true },
+  { label: "Customers", href: "/admin/customers", icon: Users },
 ];
 
 function NavLinks({ pathname }: { pathname: string }) {
