@@ -29,4 +29,15 @@ export const userRepository = {
   async recordLogin(id: string): Promise<void> {
     await User.updateOne({ _id: id }, { $set: { lastLoginAt: new Date() } }).exec();
   },
+
+  // Admin
+
+  /** Everyone, newest first — password stays excluded by its select:false. */
+  findAll(): Promise<UserDocument[]> {
+    return User.find().sort({ createdAt: -1 }).exec();
+  },
+
+  deleteById(id: string): Promise<UserDocument | null> {
+    return User.findByIdAndDelete(id).exec();
+  },
 };
