@@ -15,9 +15,11 @@ import {
 } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import Cursor from "@/components/landing/Cursor";
-import { authApi, type ApiUser } from "@/lib/api";
+import { authApi, ApiError, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
+import { formatNpr } from "@/lib/vehicleApi";
+import { bookingApi, type Booking, type BookingStatus } from "@/lib/bookingApi";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -80,10 +82,59 @@ function ActionCard({
   );
 }
 
+const STATUS_STYLES: Record<BookingStatus, string> = {
+  pending: "border border-line text-fog",
+  confirmed: "bg-accent/12 text-accent",
+  declined: "bg-red-500/10 text-red-400",
+  cancelled: "border border-line text-fog/60 line-through",
+};
+
+function dateRange(startIso: string, endIso: string): string {
+  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
+  const start = new Date(startIso).toLocaleDateString("en-US", opts);
+  const end = new Date(endIso).toLocaleDateString("en-US", { ...opts, year: "numeric" });
+  return `${start} – ${end}`;
+}
+
 function DashboardContent({ user }: { user: ApiUser }) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [bookings, setBookings] = useState<Booking[] | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    bookingApi
+      .listMine()
+      .then((list) => {
+        if (!cancelled) setBookings(list);
+      })
+      .catch(() => {
+        if (!cancelled) setBookings([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const cancelBooking = async (b: Booking) => {
+    if (cancellingId) return;
+    setCancellingId(b._id);
+    try {
+      await bookingApi.cancel(b._id);
+      toast.success(`${b.vehicle.name} booking cancelled.`);
+      setBookings(await bookingApi.listMine());
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Couldn't cancel the booking.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  const activeRentals = (bookings ?? []).filter(
+    (b) => b.status === "pending" || b.status === "confirmed",
+  ).length;
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -206,7 +257,11 @@ function DashboardContent({ user }: { user: ApiUser }) {
 
           {/* Stats */}
           <section className="mt-10 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Active Rentals" value="0" hint="Nothing on the road yet" />
+            <StatCard
+              label="Active Rentals"
+              value={bookings === null ? "—" : activeRentals}
+              hint={activeRentals > 0 ? "Pending & confirmed bookings" : "Nothing on the road yet"}
+            />
             <StatCard label="Wash Orders" value="0" hint="No washes scheduled" />
             <StatCard label="Member Since" value={memberSince} hint="Welcome to the club" />
           </section>
@@ -264,24 +319,74 @@ function DashboardContent({ user }: { user: ApiUser }) {
               </dl>
             </div>
 
-            <div
-              data-dash-item
-              className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface text-fog">
-                <CarFront className="h-5 w-5" />
-              </span>
-              <p className="mt-4 font-serif text-xl text-cream">No activity yet</p>
-              <p className="mt-2 max-w-[300px] text-sm leading-relaxed text-fog">
-                Your rentals and wash orders will appear here once you hit the road.
-              </p>
-              <Link
-                href="/#fleet"
-                className="nav-link mt-5 text-[13px] font-medium text-accent"
+            {bookings && bookings.length > 0 ? (
+              <div data-dash-item className="rounded-2xl border border-line bg-surface/60 p-6">
+                <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-fog">
+                  My Rentals
+                </h2>
+                <ul className="mt-5 flex flex-col gap-3">
+                  {bookings.map((b) => {
+                    const cancellable =
+                      (b.status === "pending" || b.status === "confirmed") &&
+                      new Date(b.startDate).getTime() > Date.now();
+                    return (
+                      <li key={b._id} className="flex items-center gap-4 border-b border-line/60 pb-3 last:border-0 last:pb-0">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={b.vehicle.imageUrl}
+                          alt={b.vehicle.name}
+                          className="h-11 w-16 shrink-0 rounded-lg object-cover"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <Link
+                            href={`/vehicles/${b.vehicle.slug}`}
+                            className="block truncate text-[13.5px] text-cream hover:text-accent"
+                          >
+                            {b.vehicle.name}
+                          </Link>
+                          <span className="block truncate text-[11.5px] text-fog">
+                            {dateRange(b.startDate, b.endDate)} · {formatNpr(b.totalPrice)}
+                          </span>
+                        </span>
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[9.5px] font-medium uppercase tracking-[0.1em] ${STATUS_STYLES[b.status]}`}
+                        >
+                          {b.status}
+                        </span>
+                        {cancellable ? (
+                          <button
+                            onClick={() => cancelBooking(b)}
+                            disabled={cancellingId === b._id}
+                            className="shrink-0 text-[11.5px] font-medium text-fog transition-colors hover:text-red-400 disabled:opacity-50"
+                          >
+                            {cancellingId === b._id ? "…" : "Cancel"}
+                          </button>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : (
+              <div
+                data-dash-item
+                className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-line p-8 text-center"
               >
-                Browse the fleet
-              </Link>
-            </div>
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface text-fog">
+                  <CarFront className="h-5 w-5" />
+                </span>
+                <p className="mt-4 font-serif text-xl text-cream">No activity yet</p>
+                <p className="mt-2 max-w-[300px] text-sm leading-relaxed text-fog">
+                  Your rentals and wash orders will appear here once you hit the road.
+                </p>
+                <Link
+                  href="/#fleet"
+                  className="nav-link mt-5 text-[13px] font-medium text-accent"
+                >
+                  Browse the fleet
+                </Link>
+              </div>
+            )}
           </section>
         </div>
       </div>

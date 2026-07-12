@@ -15,6 +15,8 @@ import MagneticSubmit, { type SubmitStatus } from "@/components/auth/MagneticSub
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 import { vehicleApi, CATEGORY_LABELS, formatNpr, type Vehicle } from "@/lib/vehicleApi";
+import { bookingApi } from "@/lib/bookingApi";
+import { ApiError } from "@/lib/api";
 
 // Same turntable stage the auth pages use — generic vehicle showcase
 const VehicleStage = dynamic(() => import("@/components/auth/AuthScene"), { ssr: false });
@@ -109,7 +111,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
     return () => mm.revert();
   }, [vehicle]);
 
-  const onBook = (e: React.FormEvent) => {
+  const onBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehicle || status !== "idle" || authLoading) return;
 
@@ -127,15 +129,25 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
       return;
     }
 
-    
     setStatus("loading");
-    window.setTimeout(() => {
+    try {
+      await bookingApi.create({ vehicleSlug: vehicle.slug, startDate: pickup, endDate: dropoff });
       setStatus("success");
       toast.success(
-        `Booking request received — ${vehicle.name} for ${days} ${days === 1 ? "day" : "days"}.`,
+        `Request sent — ${vehicle.name} for ${days} ${days === 1 ? "day" : "days"}. We'll confirm it shortly.`,
       );
-      window.setTimeout(() => setStatus("idle"), 2500);
-    }, 1100);
+      // Show it in their dashboard, where the status will update.
+      window.setTimeout(() => router.push("/dashboard"), 1400);
+    } catch (err) {
+      setStatus("idle");
+      if (err instanceof ApiError) {
+        // e.g. 409 "already booked for those dates", or per-field date errors
+        const fieldMsg = Object.values(err.fieldErrors)[0];
+        toast.error(fieldMsg ?? err.message);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
+    }
   };
 
   // Gallery: uploaded photos, falling back to the single cover for vehicles

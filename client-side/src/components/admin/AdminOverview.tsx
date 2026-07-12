@@ -6,6 +6,7 @@ import { CarFront, CalendarRange, ShieldCheck, ArrowRight } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import { vehicleApi } from "@/lib/vehicleApi";
 import { userApi } from "@/lib/userApi";
+import { bookingApi } from "@/lib/bookingApi";
 import { useAdminUser } from "@/components/admin/AdminShell";
 
 function greeting(): string {
@@ -85,6 +86,7 @@ export default function AdminOverview() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [fleetSize, setFleetSize] = useState<number | null>(null);
   const [customerCount, setCustomerCount] = useState<number | null>(null);
+  const [activeBookings, setActiveBookings] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -118,6 +120,17 @@ export default function AdminOverview() {
       .catch(() => {
         if (!cancelled) setCustomerCount(null);
       });
+    bookingApi
+      .listAll()
+      .then((bookings) => {
+        if (!cancelled)
+          setActiveBookings(
+            bookings.filter((b) => b.status === "pending" || b.status === "confirmed").length,
+          );
+      })
+      .catch(() => {
+        if (!cancelled) setActiveBookings(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -139,7 +152,11 @@ export default function AdminOverview() {
 
       <section className="mt-10 grid gap-4 sm:grid-cols-3">
         <StatCard label="Fleet Size" value={fleetSize ?? "—"} hint="Vehicles listed for rent" />
-        <StatCard label="Active Bookings" value="0" hint="Awaiting the bookings API" />
+        <StatCard
+          label="Active Bookings"
+          value={activeBookings ?? "—"}
+          hint="Pending & confirmed rentals"
+        />
         <StatCard label="Customers" value={customerCount ?? "—"} hint="Registered accounts" />
       </section>
 
@@ -159,7 +176,6 @@ export default function AdminOverview() {
             icon={CalendarRange}
             title="Review bookings"
             copy="Approve rental requests as they come in."
-            soon
           />
         </div>
       </section>

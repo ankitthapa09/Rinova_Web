@@ -46,7 +46,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Vehicles", href: "/admin/vehicles", icon: CarFront },
-  { label: "Rental Bookings", href: "/admin/rentals", icon: CalendarRange, soon: true },
+  { label: "Rental Bookings", href: "/admin/rentals", icon: CalendarRange },
   { label: "Wash Orders", href: "/admin/washes", icon: Droplets, soon: true },
   { label: "Customers", href: "/admin/customers", icon: Users },
 ];
