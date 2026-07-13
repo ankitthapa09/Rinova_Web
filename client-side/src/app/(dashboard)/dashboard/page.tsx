@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import DashboardView from "@/components/dashboard/DashboardView";
+import DashboardOverview from "@/components/dashboard/DashboardOverview";
 
 export const metadata: Metadata = {
   title: "Dashboard — Rinova",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <DashboardView />;
+  return <DashboardOverview />;
 }

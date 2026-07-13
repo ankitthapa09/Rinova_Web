@@ -15,6 +15,9 @@ import MagneticSubmit, { type SubmitStatus } from "@/components/auth/MagneticSub
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 import { vehicleApi, CATEGORY_LABELS, formatNpr, type Vehicle } from "@/lib/vehicleApi";
+import { bookingApi, type Booking } from "@/lib/bookingApi";
+import { STATUS_STYLES, dateRange, isCancellable } from "@/components/dashboard/RentalsList";
+import { ApiError } from "@/lib/api";
 
 // Same turntable stage the auth pages use — generic vehicle showcase
 const VehicleStage = dynamic(() => import("@/components/auth/AuthScene"), { ssr: false });
@@ -72,6 +75,11 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
   const [dropoff, setDropoff] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
 
+  // The signed-in user's live booking for THIS vehicle, if any — one active
+  // booking per vehicle, so the panel offers cancel instead of rebooking.
+  const [myBooking, setMyBooking] = useState<Booking | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     vehicleApi.get(slug).then((v) => {
@@ -81,6 +89,40 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
       cancelled = true;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    bookingApi
+      .listMine()
+      .then((list) => {
+        if (cancelled) return;
+        setMyBooking(
+          list.find(
+            (b) =>
+              b.vehicle.slug === slug && (b.status === "pending" || b.status === "confirmed"),
+          ) ?? null,
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, slug]);
+
+  const onCancelBooking = async () => {
+    if (!myBooking || cancelling) return;
+    setCancelling(true);
+    try {
+      await bookingApi.cancel(myBooking._id);
+      toast.success(`${myBooking.vehicle.name} booking cancelled.`);
+      setMyBooking(null); // the form returns, dates are free again
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't cancel the booking.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const days = useMemo(() => {
     if (!pickup || !dropoff) return 0;
@@ -109,7 +151,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
     return () => mm.revert();
   }, [vehicle]);
 
-  const onBook = (e: React.FormEvent) => {
+  const onBook = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehicle || status !== "idle" || authLoading) return;
 
@@ -127,15 +169,25 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
       return;
     }
 
-    
     setStatus("loading");
-    window.setTimeout(() => {
+    try {
+      await bookingApi.create({ vehicleSlug: vehicle.slug, startDate: pickup, endDate: dropoff });
       setStatus("success");
       toast.success(
-        `Booking request received — ${vehicle.name} for ${days} ${days === 1 ? "day" : "days"}.`,
+        `Request sent — ${vehicle.name} for ${days} ${days === 1 ? "day" : "days"}. We'll confirm it shortly.`,
       );
-      window.setTimeout(() => setStatus("idle"), 2500);
-    }, 1100);
+      // Show it in their dashboard, where the status will update.
+      window.setTimeout(() => router.push("/dashboard"), 1400);
+    } catch (err) {
+      setStatus("idle");
+      if (err instanceof ApiError) {
+        // e.g. 409 "already booked for those dates", or per-field date errors
+        const fieldMsg = Object.values(err.fieldErrors)[0];
+        toast.error(fieldMsg ?? err.message);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
+    }
   };
 
   // Gallery: uploaded photos, falling back to the single cover for vehicles
@@ -270,6 +322,38 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
                   <span className="text-[11px] uppercase tracking-[0.15em] text-fog">Fuel not included</span>
                 </div>
 
+                {myBooking ? (
+                  <div className="mt-6 rounded-xl border border-line bg-night/40 p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[13.5px] text-cream">You already have a booking</p>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-[9.5px] font-medium uppercase tracking-[0.1em] ${STATUS_STYLES[myBooking.status]}`}
+                      >
+                        {myBooking.status}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[13px] text-fog">
+                      {dateRange(myBooking.startDate, myBooking.endDate)} ·{" "}
+                      {formatNpr(myBooking.totalPrice)}
+                    </p>
+                    <p className="mt-1 text-[12px] text-fog">
+                      {myBooking.status === "pending"
+                        ? "Waiting for confirmation — you can cancel while it's pending."
+                        : "Confirmed — cancel before the pick-up date if your plans change."}
+                    </p>
+                    {isCancellable(myBooking) ? (
+                      <button
+                        type="button"
+                        onClick={onCancelBooking}
+                        disabled={cancelling}
+                        className="mt-4 w-full rounded-lg border border-line py-2.5 text-[13px] font-medium text-fog transition-colors hover:border-red-400/60 hover:text-red-400 disabled:opacity-50"
+                      >
+                        {cancelling ? "Cancelling…" : "Cancel booking"}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                <>
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   <label className="block">
                     <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.18em] text-fog">
@@ -319,6 +403,8 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
                     {user ? "Book This Vehicle" : "Sign In to Book"}
                   </MagneticSubmit>
                 </div>
+                </>
+                )}
               </form>
             </div>
           </div>

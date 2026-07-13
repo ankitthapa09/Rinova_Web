@@ -3,26 +3,19 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import {
-  LayoutDashboard,
-  CarFront,
-  CalendarRange,
-  Droplets,
-  Users,
-  LogOut,
-} from "lucide-react";
+import { LayoutDashboard, CarFront, Droplets, UserRound, LogOut } from "lucide-react";
 import Cursor from "@/components/landing/Cursor";
 import { authApi, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 
-// The shell resolves the admin once and shares it, so child pages don't each
-// re-run the session restore.
-const AdminUserContext = createContext<ApiUser | null>(null);
+// The shell resolves the session once and shares it — child pages read it from
+// context instead of re-running the restore.
+const DashboardUserContext = createContext<ApiUser | null>(null);
 
-export function useAdminUser(): ApiUser {
-  const user = useContext(AdminUserContext);
-  if (!user) throw new Error("useAdminUser must be used inside AdminShell");
+export function useDashboardUser(): ApiUser {
+  const user = useContext(DashboardUserContext);
+  if (!user) throw new Error("useDashboardUser must be used inside DashboardShell");
   return user;
 }
 
@@ -41,19 +34,16 @@ interface NavItem {
   soon?: boolean;
 }
 
-// The admin's own navigation — the operator's jobs, not a customer's. Sections
-// whose backend isn't built yet are flagged `soon` and light up as we add each.
 const NAV: NavItem[] = [
-  { label: "Overview", href: "/admin", icon: LayoutDashboard },
-  { label: "Vehicles", href: "/admin/vehicles", icon: CarFront },
-  { label: "Rental Bookings", href: "/admin/rentals", icon: CalendarRange },
-  { label: "Wash Orders", href: "/admin/washes", icon: Droplets, soon: true },
-  { label: "Customers", href: "/admin/customers", icon: Users },
+  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  { label: "My Rentals", href: "/dashboard/rentals", icon: CarFront },
+  { label: "Wash Orders", href: "/dashboard/washes", icon: Droplets, soon: true },
+  { label: "Profile", href: "/dashboard/profile", icon: UserRound, soon: true },
 ];
 
 function NavLinks({ pathname }: { pathname: string }) {
   const isActive = (href: string) =>
-    href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+    href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
   return (
     <>
@@ -63,11 +53,7 @@ function NavLinks({ pathname }: { pathname: string }) {
 
         if (item.soon) {
           return (
-            <span
-              key={item.label}
-              aria-disabled
-              className={`${base} cursor-not-allowed text-fog/70`}
-            >
+            <span key={item.label} aria-disabled className={`${base} cursor-not-allowed text-fog/70`}>
               <item.icon className="h-4 w-4" />
               {item.label}
               <span className="ml-auto rounded-full border border-line px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-fog">
@@ -95,7 +81,7 @@ function NavLinks({ pathname }: { pathname: string }) {
   );
 }
 
-export default function AdminShell({ children }: { children: ReactNode }) {
+export default function DashboardShell({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -104,15 +90,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      toast.error("Please sign in to continue.");
+      toast.error("Please sign in to view your dashboard.");
       router.replace("/login");
-    } else if (user.role !== "admin") {
-      toast.error("That area is for staff only.");
-      router.replace("/dashboard");
+    } else if (user.role === "admin") {
+      // Admins have their own home — keep the two dashboards from mixing.
+      router.replace("/admin");
     }
   }, [loading, user, router]);
 
-  if (loading || !user || user.role !== "admin") {
+  if (loading || !user || user.role === "admin") {
     return (
       <div className="flex min-h-[100svh] items-center justify-center">
         <p className="animate-pulse font-serif text-xl tracking-[0.08em] text-fog">RINOVA</p>
@@ -134,20 +120,15 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AdminUserContext.Provider value={user}>
+    <DashboardUserContext.Provider value={user}>
       <div className="relative flex min-h-[100svh]">
         <Cursor />
 
         {/* ── Sidebar ─────────────────────────────────────── */}
         <aside className="sticky top-0 hidden h-[100svh] w-[250px] shrink-0 flex-col border-r border-line px-6 py-8 lg:flex">
-          <div className="flex items-center gap-2.5">
-            <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
-              RINOVA
-            </Link>
-            <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-accent">
-              Admin
-            </span>
-          </div>
+          <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
+            RINOVA
+          </Link>
 
           <nav className="mt-12 flex flex-col gap-1">
             <NavLinks pathname={pathname} />
@@ -177,17 +158,12 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div aria-hidden className="glow-orb absolute -right-[20%] -top-[30%] h-[50vw] w-[50vw]" />
 
-          <div className="relative mx-auto w-full max-w-[1100px] px-6 py-8 lg:px-12 lg:py-12">
+          <div className="relative mx-auto w-full max-w-[1060px] px-6 py-8 lg:px-12 lg:py-12">
             {/* Mobile topbar */}
             <div className="mb-10 flex items-center justify-between lg:hidden">
-              <div className="flex items-center gap-2.5">
-                <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
-                  RINOVA
-                </Link>
-                <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-accent">
-                  Admin
-                </span>
-              </div>
+              <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
+                RINOVA
+              </Link>
               <button
                 onClick={onLogout}
                 aria-label="Sign out"
@@ -197,7 +173,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               </button>
             </div>
 
-            {/* Mobile nav — horizontal scroll of the same sections */}
+            {/* Mobile nav */}
             <nav className="mb-8 flex gap-1 overflow-x-auto lg:hidden">
               <NavLinks pathname={pathname} />
             </nav>
@@ -206,6 +182,6 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </div>
-    </AdminUserContext.Provider>
+    </DashboardUserContext.Provider>
   );
 }
