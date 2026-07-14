@@ -11,6 +11,20 @@ function todayStart(): Date {
   return now;
 }
 
+/**
+ * A wash day is a calendar day at the garage, not an instant. Coercing
+ * 'YYYY-MM-DD' with `new Date()` would read it as UTC midnight, which lands on
+ * the day before once the server sits west of UTC — so we build the local day
+ * explicitly and keep the shop's own calendar the source of truth.
+ */
+const calendarDay = z
+  .string({ error: 'Pick a date for the wash' })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must look like YYYY-MM-DD')
+  .transform((text) => {
+    const [year, month, day] = text.split('-').map(Number);
+    return new Date(year as number, (month as number) - 1, day as number);
+  });
+
 /** The moment a slot begins on a given day, e.g. '10:30' on 14 July. */
 function slotStart(day: Date, slot: string): Date {
   const [hours, minutes] = slot.split(':').map(Number);
@@ -36,7 +50,7 @@ export const createWashOrderSchema = z
       .min(2, 'Number plate is required')
       .max(20, 'That number plate looks too long')
       .transform((plate) => plate.toUpperCase()),
-    scheduledDate: z.coerce.date({ error: 'Pick a date for the wash' }),
+    scheduledDate: calendarDay,
     slot: z.enum(WASH_SLOTS, { error: 'Pick an arrival time' }),
     notes: z.string().trim().max(300, 'Keep notes under 300 characters').optional(),
   })
@@ -78,9 +92,10 @@ export const updateWashOrderStatusSchema = z.object({
   }),
 });
 
-/** ?date=YYYY-MM-DD — which slots still have a bay free that day. */
+/** ?date=YYYY-MM-DD — which slots still have a bay free that day. Read as the
+ *  same calendar day the order was written with, or the counts wouldn't match. */
 export const washAvailabilityQuerySchema = z.object({
-  date: z.coerce.date({ error: 'A date is required' }),
+  date: calendarDay,
 });
 
 export type CreateWashOrderInput = z.infer<typeof createWashOrderSchema>;

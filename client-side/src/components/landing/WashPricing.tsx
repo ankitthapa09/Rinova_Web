@@ -18,6 +18,8 @@ const VEHICLE_TYPES: { id: VehicleType; label: string }[] = [
 ];
 
 interface WashPackage {
+  /** Matches the server's catalogue id — carried into the booking form */
+  id: "basic" | "deep" | "detail";
   name: string;
   duration: string;
   prices: Record<VehicleType, number>;
@@ -27,6 +29,7 @@ interface WashPackage {
 
 const PACKAGES: WashPackage[] = [
   {
+    id: "basic",
     name: "Basic Wash",
     duration: "20–30 min",
     prices: { bike: 150, car: 300, suv: 400, van: 500, bus: 900 },
@@ -38,6 +41,7 @@ const PACKAGES: WashPackage[] = [
     ],
   },
   {
+    id: "deep",
     name: "Deep Clean",
     duration: "60–90 min",
     prices: { bike: 400, car: 800, suv: 1000, van: 1200, bus: 2000 },
@@ -51,6 +55,7 @@ const PACKAGES: WashPackage[] = [
     popular: true,
   },
   {
+    id: "detail",
     name: "Full Detail",
     duration: "3–4 hrs",
     prices: { bike: 1200, car: 2500, suv: 3000, van: 3500, bus: 6000 },
@@ -320,7 +325,7 @@ export default function WashPricing() {
                   ))}
                 </ul>
                 <Link
-                  href="#contact"
+                  href={`/wash/book?package=${pkg.id}&type=${vehicle}`}
                   className={`mt-8 inline-flex items-center justify-center rounded-full px-6 py-3.5 text-sm font-medium transition-colors duration-300 ${
                     hot
                       ? "bg-night text-cream hover:bg-[#26242B]"
