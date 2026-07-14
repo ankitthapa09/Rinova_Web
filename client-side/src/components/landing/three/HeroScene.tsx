@@ -6,7 +6,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, useGLTF } from "@react-three/drei";
 import VehicleModel from "./VehicleModel";
 
-const CAR_URL = "/models/car.glb";
+const CAR_URL = "/models/jeep_rubicon.glb";
 // "Convertible" by Poly by Google — CC-BY 3.0 (see public/models/LICENSE.txt)
 useGLTF.preload(CAR_URL);
 
@@ -48,7 +48,7 @@ function CarRig({ animate }: { animate: boolean }) {
 export default function HeroScene({ animate = true }: { animate?: boolean }) {
   return (
     <Canvas
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       camera={{ position: [0, 0.75, 8.6], fov: 30 }}
       gl={{ antialias: true, alpha: true }}
       className="!pointer-events-none"

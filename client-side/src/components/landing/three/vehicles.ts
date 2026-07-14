@@ -14,8 +14,8 @@ export interface VehicleDef {
 export const VEHICLES: VehicleDef[] = [
   {
     id: "bike",
-    file: "/models/scooter.glb",
-    length: 2.4,
+    file: "/models/sports_bike.glb",
+    length: 3.8,
     yaw: 0,
     name: "Bikes & Scooters",
     watermark: "BIKE",
@@ -24,8 +24,8 @@ export const VEHICLES: VehicleDef[] = [
   },
   {
     id: "car",
-    file: "/models/car.glb",
-    length: 3.9,
+    file: "/models/2024_byd_atto_3.glb",
+    length: 4.5,
     yaw: 0,
     name: "Cars",
     watermark: "CAR",
@@ -34,8 +34,8 @@ export const VEHICLES: VehicleDef[] = [
   },
   {
     id: "suv",
-    file: "/models/suv.glb",
-    length: 3.9,
+    file: "/models/toyota_hilux.glb",
+    length: 4.5,
     yaw: 0,
     name: "SUVs & Jeeps",
     watermark: "SUV",
@@ -44,7 +44,7 @@ export const VEHICLES: VehicleDef[] = [
   },
   {
     id: "van",
-    file: "/models/van.glb",
+    file: "/models/volkswagen_bus.glb",
     length: 4.1,
     yaw: 0,
     name: "Vans",
@@ -54,8 +54,8 @@ export const VEHICLES: VehicleDef[] = [
   },
   {
     id: "bus",
-    file: "/models/bus.glb",
-    length: 5.2,
+    file: "/models/generic_town_bus.glb",
+    length: 6.2,
     yaw: 0,
     name: "Buses",
     watermark: "BUS",
