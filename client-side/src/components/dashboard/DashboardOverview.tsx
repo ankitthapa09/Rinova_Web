@@ -5,8 +5,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { CarFront, Droplets, ArrowRight, BadgeCheck, CircleDashed } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import { bookingApi, type Booking } from "@/lib/bookingApi";
+import { washApi, type WashOrder } from "@/lib/washApi";
 import { useDashboardUser } from "@/components/dashboard/DashboardShell";
 import RentalsList from "@/components/dashboard/RentalsList";
+import WashesList from "@/components/dashboard/WashesList";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -58,13 +60,16 @@ export default function DashboardOverview() {
   const user = useDashboardUser();
   const rootRef = useRef<HTMLDivElement>(null);
   const [bookings, setBookings] = useState<Booking[] | null>(null);
+  const [washes, setWashes] = useState<WashOrder[] | null>(null);
 
   const reload = useCallback(async () => {
-    try {
-      setBookings(await bookingApi.listMine());
-    } catch {
-      setBookings([]);
-    }
+    // Two independent lists — one failing shouldn't blank the other.
+    const [rentals, washOrders] = await Promise.allSettled([
+      bookingApi.listMine(),
+      washApi.listMine(),
+    ]);
+    setBookings(rentals.status === "fulfilled" ? rentals.value : []);
+    setWashes(washOrders.status === "fulfilled" ? washOrders.value : []);
   }, []);
 
   useEffect(() => {
@@ -86,6 +91,10 @@ export default function DashboardOverview() {
 
   const activeRentals = (bookings ?? []).filter(
     (b) => b.status === "pending" || b.status === "confirmed",
+  ).length;
+
+  const activeWashes = (washes ?? []).filter(
+    (w) => w.status === "pending" || w.status === "confirmed",
   ).length;
 
   const memberSince = new Date(user.createdAt).toLocaleDateString("en-US", {
@@ -112,7 +121,11 @@ export default function DashboardOverview() {
           value={bookings === null ? "—" : activeRentals}
           hint={activeRentals > 0 ? "Pending & confirmed bookings" : "Nothing on the road yet"}
         />
-        <StatCard label="Wash Orders" value="0" hint="No washes scheduled" />
+        <StatCard
+          label="Wash Orders"
+          value={washes === null ? "—" : activeWashes}
+          hint={activeWashes > 0 ? "Pending & confirmed washes" : "No washes scheduled"}
+        />
         <StatCard label="Member Since" value={memberSince} hint="Welcome to the club" />
       </section>
 
@@ -129,7 +142,7 @@ export default function DashboardOverview() {
             copy="Bikes to buses — pick your ride from the fleet."
           />
           <ActionCard
-            href="/#washing"
+            href="/wash/book"
             icon={Droplets}
             title="Schedule a wash"
             copy="Professional detailing, inside and out."
@@ -191,9 +204,10 @@ export default function DashboardOverview() {
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface text-fog">
               <CarFront className="h-5 w-5" />
             </span>
-            <p className="mt-4 font-serif text-xl text-cream">No activity yet</p>
+            <p className="mt-4 font-serif text-xl text-cream">No rentals yet</p>
             <p className="mt-2 max-w-[300px] text-sm leading-relaxed text-fog">
-              Your rentals and wash orders will appear here once you hit the road.
+              Vehicles you book will appear here once you hit the road. Washes get their own
+              panel below.
             </p>
             <Link href="/#fleet" className="nav-link mt-5 text-[13px] font-medium text-accent">
               Browse the fleet
@@ -201,6 +215,24 @@ export default function DashboardOverview() {
           </div>
         )}
       </section>
+
+      {/* Recent washes — only once there's something to show; the empty case is
+          already covered by the panel above. */}
+      {washes && washes.length > 0 ? (
+        <section data-dash-item className="mt-4 rounded-2xl border border-line bg-surface/60 p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-fog">
+              Recent Washes
+            </h2>
+            <Link href="/dashboard/washes" className="text-[12px] font-medium text-accent">
+              View all
+            </Link>
+          </div>
+          <div className="mt-5">
+            <WashesList orders={washes.slice(0, 3)} onChanged={reload} />
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
