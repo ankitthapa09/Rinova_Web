@@ -73,7 +73,7 @@ interface FleetSceneProps {
 export default function FleetScene({ progressRef, animate = true }: FleetSceneProps) {
   return (
     <Canvas
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       camera={{ position: [0, 1.2, 9.5], fov: 32 }}
       gl={{ antialias: true, alpha: true }}
       className="!pointer-events-none"

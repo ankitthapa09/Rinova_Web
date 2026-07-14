@@ -68,7 +68,7 @@ export default function AuthScene({
 }) {
   return (
     <Canvas
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       camera={{ position: [0, 0.8, 8.2], fov: 32 }}
       gl={{ antialias: true, alpha: true }}
       className="!pointer-events-none"

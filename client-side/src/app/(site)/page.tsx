@@ -3,8 +3,8 @@ import Cursor from "@/components/landing/Cursor";
 import Hero from "@/components/landing/Hero";
 import Services from "@/components/landing/Services";
 import Fleet from "@/components/landing/Fleet";
-import WashPricing from "@/components/landing/WashPricing";
 import DarkInterlude from "@/components/landing/DarkInterlude";
+import WashPricing from "@/components/landing/WashPricing";
 import HowItWorks from "@/components/landing/HowItWorks";
 import Testimonials from "@/components/landing/Testimonials";
 import FinalCta from "@/components/landing/FinalCta";
@@ -17,8 +17,8 @@ export default function Home() {
       <Hero />
       <Services />
       <Fleet />
-      <WashPricing />
       <DarkInterlude />
+      <WashPricing />
       <HowItWorks />
       <Testimonials />
       <FinalCta />
