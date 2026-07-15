@@ -5,7 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Users, Fuel, Gauge, Cog, X, ChevronLeft, ChevronRight, Expand } from "lucide-react";
+import { ArrowLeft, Users, Fuel, Gauge, Cog, X, ChevronLeft, ChevronRight, Expand, Route, BatteryCharging } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import SmoothScroll from "@/components/landing/SmoothScroll";
 import Cursor from "@/components/landing/Cursor";
@@ -214,13 +214,22 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
     }
   };
 
+  // Electric & hybrid vehicles surface range/battery instead of talking fuel.
+  const isEV = /electric|hybrid/i.test(vehicle?.specs.fuel ?? "");
+
   const specRows = vehicle
     ? ([
         vehicle.specs.seats ? { icon: Users, label: "Seats", value: `${vehicle.specs.seats}` } : null,
         vehicle.specs.transmission
           ? { icon: Cog, label: "Transmission", value: vehicle.specs.transmission }
           : null,
-        { icon: Fuel, label: "Fuel", value: vehicle.specs.fuel },
+        { icon: Fuel, label: isEV ? "Power" : "Fuel", value: vehicle.specs.fuel },
+        vehicle.specs.range
+          ? { icon: Route, label: "Range", value: `${vehicle.specs.range} km` }
+          : null,
+        vehicle.specs.batteryCapacity
+          ? { icon: BatteryCharging, label: "Battery", value: `${vehicle.specs.batteryCapacity} kWh` }
+          : null,
         vehicle.specs.topSpeed ? { icon: Gauge, label: "Top speed", value: vehicle.specs.topSpeed } : null,
       ].filter(Boolean) as { icon: typeof Users; label: string; value: string }[])
     : [];
@@ -354,7 +363,9 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
                     <span className="font-serif text-3xl text-cream">{formatNpr(vehicle.pricePerDay)}</span>
                     <span className="text-[13px] text-fog"> / day</span>
                   </p>
-                  <span className="text-[11px] uppercase tracking-[0.15em] text-fog">Fuel not included</span>
+                  <span className="text-[11px] uppercase tracking-[0.15em] text-fog">
+                    {isEV ? "Charging not included" : "Fuel not included"}
+                  </span>
                 </div>
 
                 {myBooking ? (

@@ -1,18 +1,23 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { X, Upload, Loader2, Check, Plus } from "lucide-react";
+import { X, Upload, Loader2, Check, Plus, Zap, Box, Trash2, Star, Eye } from "lucide-react";
 import {
   vehicleApi,
   CATEGORY_LABELS,
   type Vehicle,
   type VehicleInput,
+  type VehicleUpdate,
   type VehicleCategory,
 } from "@/lib/vehicleApi";
 import { ApiError } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as VehicleCategory[];
+const FUEL_OPTIONS = ["Petrol", "Diesel", "Electric", "Hybrid", "CNG"];
+
+/** Electric & hybrid vehicles get the extra range/battery fields. */
+const isElectric = (fuel: string) => fuel === "Electric" || fuel === "Hybrid";
 
 const inputCls =
   "w-full rounded-lg border border-line bg-night/40 px-3 py-2.5 text-[14px] text-cream outline-none transition-colors placeholder:text-fog/50 focus:border-accent";
@@ -21,18 +26,46 @@ const labelCls = "mb-1.5 block text-[11px] font-medium uppercase tracking-[0.14e
 function Field({
   label,
   error,
+  hint,
   children,
 }: {
   label: string;
   error?: string;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
     <label className="block">
       <span className={labelCls}>{label}</span>
       {children}
-      {error ? <span className="mt-1 block text-[12px] text-red-400">{error}</span> : null}
+      {error ? (
+        <span className="mt-1 block text-[12px] text-red-400">{error}</span>
+      ) : hint ? (
+        <span className="mt-1 block text-[11.5px] text-fog/70">{hint}</span>
+      ) : null}
     </label>
+  );
+}
+
+/** A titled group of related fields — a light underlined header, no heavy box,
+ *  so the panel reads as airy sections rather than stacked cards. */
+function Section({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: typeof Box;
+  children: ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-5 flex items-center gap-2 border-b border-line/60 pb-2.5">
+        <Icon className="h-3.5 w-3.5 text-accent" />
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.2em] text-cream">{title}</h3>
+      </div>
+      <div className="space-y-5">{children}</div>
+    </section>
   );
 }
 
@@ -54,6 +87,10 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
   const [seats, setSeats] = useState(vehicle?.specs.seats ? String(vehicle.specs.seats) : "");
   const [transmission, setTransmission] = useState(vehicle?.specs.transmission ?? "");
   const [topSpeed, setTopSpeed] = useState(vehicle?.specs.topSpeed ?? "");
+  const [range, setRange] = useState(vehicle?.specs.range ? String(vehicle.specs.range) : "");
+  const [battery, setBattery] = useState(
+    vehicle?.specs.batteryCapacity ? String(vehicle.specs.batteryCapacity) : "",
+  );
   const [modelLength, setModelLength] = useState(
     vehicle?.modelLength ? String(vehicle.modelLength) : "3.5",
   );
@@ -70,19 +107,27 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
     setPhotoSlots((slots) => slots.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
   const [model, setModel] = useState<File | null>(null);
+  // Editing: marks the existing model for deletion on save (unless a new one is picked).
+  const [removeModel, setRemoveModel] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "uploading" | "saving">("idle");
   const busy = status !== "idle";
-
   const err = (field: string) => errors[field];
+
+  // ── Dynamic conditions ──────────────────────────────────
+  const ev = isElectric(fuel);
+  const showSeats = category !== "bike";
+  // A model is in play if a new file is picked, or an existing one is kept.
+  const keepsExistingModel = Boolean(vehicle?.modelUrl) && !removeModel && !model;
+  const hasModel = Boolean(model) || keepsExistingModel;
+  const fuelOptions = FUEL_OPTIONS.includes(fuel) ? FUEL_OPTIONS : [fuel, ...FUEL_OPTIONS];
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setErrors({});
 
-    // A cover photo is required; the 3D model is optional.
     const hasCover = Boolean(photoSlots[0].file || photoSlots[0].url);
     if (!hasCover) {
       setErrors({ imageUrl: "A cover photo is required." });
@@ -90,8 +135,6 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
     }
 
     try {
-
-      let modelUrl = vehicle?.modelUrl;
       const anyNewFile = photoSlots.some((s) => s.file) || Boolean(model);
       if (anyNewFile) setStatus("uploading");
 
@@ -100,38 +143,61 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
         if (slot.file) images.push((await vehicleApi.uploadFile("image", slot.file)).url);
         else if (slot.url) images.push(slot.url);
       }
-      if (model) modelUrl = (await vehicleApi.uploadFile("model", model)).url;
       const imageUrl = images[0];
 
-      // 2) Assemble the payload.
-      const payload: VehicleInput = {
+      // Only build the EV specs when the fuel type calls for them.
+      const specs: VehicleInput["specs"] = {
+        fuel: fuel.trim(),
+        ...(showSeats && seats ? { seats: Number(seats) } : {}),
+        ...(transmission ? { transmission: transmission as "Manual" | "Automatic" } : {}),
+        ...(topSpeed.trim() ? { topSpeed: topSpeed.trim() } : {}),
+        ...(ev && range ? { range: Number(range) } : {}),
+        ...(ev && battery ? { batteryCapacity: Number(battery) } : {}),
+      };
+
+      const base = {
         name: name.trim(),
         category,
         tagline: tagline.trim(),
         pricePerDay: Number(pricePerDay),
-        specs: {
-          fuel: fuel.trim(),
-          ...(seats ? { seats: Number(seats) } : {}),
-          ...(transmission ? { transmission: transmission as "Manual" | "Automatic" } : {}),
-          ...(topSpeed.trim() ? { topSpeed: topSpeed.trim() } : {}),
-        },
+        specs,
         imageUrl: imageUrl ?? "",
         images,
-        // Only sent when a model exists — vehicles without one are photo-only.
-        ...(modelUrl ? { modelUrl, modelLength: Number(modelLength) } : {}),
         featured,
         isAvailable,
         description: description.trim(),
       };
 
-      // 3) Create or update.
+      // ── 3D model: upload a new one, keep the old, or remove it ──
+      let modelUrl: string | null | undefined;
+      let outLength: number | null | undefined;
+      if (model) {
+        modelUrl = (await vehicleApi.uploadFile("model", model)).url;
+        outLength = Number(modelLength);
+      } else if (editing && removeModel && vehicle?.modelUrl) {
+        modelUrl = null; // clears modelUrl + modelLength server-side
+        outLength = null;
+      } else if (keepsExistingModel) {
+        // Keep the file, but still let the admin retune its length.
+        outLength = Number(modelLength);
+      }
+
       setStatus("saving");
       if (editing && vehicle) {
+        const payload: VehicleUpdate = {
+          ...base,
+          ...(modelUrl !== undefined ? { modelUrl } : {}),
+          ...(outLength !== undefined ? { modelLength: outLength } : {}),
+        };
         await vehicleApi.update(vehicle._id, payload);
-        toast.success(`${payload.name} updated.`);
+        toast.success(`${base.name} updated.`);
       } else {
+        const payload: VehicleInput = {
+          ...base,
+          ...(modelUrl ? { modelUrl, modelLength: Number(modelLength) } : {}),
+        };
         await vehicleApi.create(payload);
-        toast.success(`${payload.name} added to the fleet.`);
+        toast.success(`${base.name} added to the fleet.`);
       }
       onSaved();
       onClose();
@@ -148,7 +214,6 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
       <button
         aria-label="Close"
         onClick={onClose}
@@ -156,11 +221,16 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
       />
 
       {/* Slide-over panel */}
-      <div className="relative flex h-full w-full max-w-[560px] flex-col border-l border-line bg-surface">
-        <div className="flex items-center justify-between border-b border-line px-6 py-5">
-          <h2 className="font-serif text-2xl text-cream">
-            {editing ? "Edit vehicle" : "Add vehicle"}
-          </h2>
+      <div className="relative flex h-full w-full max-w-[600px] flex-col border-l border-line bg-surface">
+        <div className="flex items-start justify-between border-b border-line px-6 py-5">
+          <div>
+            <h2 className="font-serif text-2xl text-cream">
+              {editing ? "Edit vehicle" : "Add vehicle"}
+            </h2>
+            <p className="mt-0.5 text-[13px] text-fog">
+              {editing ? `Updating ${vehicle?.name}` : "List a new vehicle in the fleet"}
+            </p>
+          </div>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -170,117 +240,157 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
-          <Field label="Name" error={err("name")}>
-            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Honda CB750" />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Category" error={err("category")}>
-              <select
-                className={inputCls}
-                value={category}
-                onChange={(e) => setCategory(e.target.value as VehicleCategory)}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
-                  </option>
-                ))}
-              </select>
+        <form onSubmit={onSubmit} className="flex-1 space-y-9 overflow-y-auto px-6 py-7">
+          {/* ── Basics ── */}
+          <Section title="Basics" icon={Box}>
+            <Field label="Name" error={err("name")}>
+              <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Honda CB750" />
             </Field>
-            <Field label="Price / day (Rs.)" error={err("pricePerDay")}>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                value={pricePerDay}
-                onChange={(e) => setPricePerDay(e.target.value)}
-                placeholder="3200"
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Category" error={err("category")}>
+                <select
+                  className={inputCls}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as VehicleCategory)}
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {CATEGORY_LABELS[c]}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Price / day (Rs.)" error={err("pricePerDay")}>
+                <input className={inputCls} type="number" min={0} value={pricePerDay} onChange={(e) => setPricePerDay(e.target.value)} placeholder="3200" />
+              </Field>
+            </div>
+            <Field label="Tagline" error={err("tagline")} hint="A short line shown under the name.">
+              <input className={inputCls} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="The original superbike" />
+            </Field>
+            <Field label="Description" error={err("description")} hint="At least 10 characters.">
+              <textarea
+                className={`${inputCls} min-h-[90px] resize-y`}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="A classic inline-four with presence…"
               />
             </Field>
-          </div>
+          </Section>
 
-          <Field label="Tagline" error={err("tagline")}>
-            <input className={inputCls} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="The original superbike" />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Fuel" error={err("specs.fuel")}>
-              <input className={inputCls} value={fuel} onChange={(e) => setFuel(e.target.value)} placeholder="Petrol" />
-            </Field>
-            <Field label="Seats" error={err("specs.seats")}>
-              <input className={inputCls} type="number" min={1} value={seats} onChange={(e) => setSeats(e.target.value)} placeholder="2" />
-            </Field>
-            <Field label="Transmission" error={err("specs.transmission")}>
-              <select className={inputCls} value={transmission} onChange={(e) => setTransmission(e.target.value)}>
-                <option value="">—</option>
-                <option value="Manual">Manual</option>
-                <option value="Automatic">Automatic</option>
-              </select>
-            </Field>
-            <Field label="Top speed" error={err("specs.topSpeed")}>
-              <input className={inputCls} value={topSpeed} onChange={(e) => setTopSpeed(e.target.value)} placeholder="200 km/h" />
-            </Field>
-          </div>
-
-          <Field label="Description" error={err("description")}>
-            <textarea
-              className={`${inputCls} min-h-[90px] resize-y`}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="A classic inline-four with presence…"
-            />
-          </Field>
-
-          {/* Photo gallery — up to 4, first is the cover */}
-          <div>
-            <span className={labelCls}>Photos (up to 4 — first is the cover)</span>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {photoSlots.map((slot, i) => (
-                <PhotoSlot
-                  key={i}
-                  label={i === 0 ? "Cover" : `Photo ${i + 1}`}
-                  slot={slot}
-                  onPick={(f) => setSlot(i, { file: f })}
-                  onClear={() => setSlot(i, { url: null, file: null })}
-                />
-              ))}
+          {/* ── Specifications (dynamic) ── */}
+          <Section title="Specifications" icon={Zap}>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Fuel" error={err("specs.fuel")}>
+                <select className={inputCls} value={fuel} onChange={(e) => setFuel(e.target.value)}>
+                  {fuelOptions.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Transmission" error={err("specs.transmission")}>
+                <select className={inputCls} value={transmission} onChange={(e) => setTransmission(e.target.value)}>
+                  <option value="">—</option>
+                  <option value="Manual">Manual</option>
+                  <option value="Automatic">Automatic</option>
+                </select>
+              </Field>
+              {showSeats ? (
+                <Field label="Seats" error={err("specs.seats")}>
+                  <input className={inputCls} type="number" min={1} value={seats} onChange={(e) => setSeats(e.target.value)} placeholder="5" />
+                </Field>
+              ) : null}
+              <Field label="Top speed" error={err("specs.topSpeed")}>
+                <input className={inputCls} value={topSpeed} onChange={(e) => setTopSpeed(e.target.value)} placeholder="200 km/h" />
+              </Field>
             </div>
-            {err("imageUrl") || err("images") ? (
-              <span className="mt-1 block text-[12px] text-red-400">
-                {err("imageUrl") ?? err("images")}
-              </span>
+
+            {/* EV-only fields, revealed for Electric / Hybrid */}
+            {ev ? (
+              <div className="rounded-xl border border-[#4EA8DE]/30 bg-[#4EA8DE]/[0.05] p-4">
+                <div className="mb-3 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-[#4EA8DE]">
+                  <Zap className="h-3.5 w-3.5" /> Electric details
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Range (km)" error={err("specs.range")} hint="On a full charge.">
+                    <input className={inputCls} type="number" min={0} value={range} onChange={(e) => setRange(e.target.value)} placeholder="420" />
+                  </Field>
+                  <Field label="Battery (kWh)" error={err("specs.batteryCapacity")}>
+                    <input className={inputCls} type="number" min={0} value={battery} onChange={(e) => setBattery(e.target.value)} placeholder="75" />
+                  </Field>
+                </div>
+              </div>
             ) : null}
-          </div>
+          </Section>
 
-          {/* 3D model upload — optional showcase */}
-          <FileField
-            label="3D model (.glb) — optional"
-            accept=".glb,model/gltf-binary"
-            file={model}
-            existing={vehicle?.modelUrl}
-            onPick={setModel}
-            error={err("modelUrl")}
-          />
+          {/* ── Media ── */}
+          <Section title="Media" icon={Upload}>
+            <div>
+              <span className={labelCls}>Photos — up to 4, first is the cover</span>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {photoSlots.map((slot, i) => (
+                  <PhotoSlot
+                    key={i}
+                    label={i === 0 ? "Cover" : `Photo ${i + 1}`}
+                    slot={slot}
+                    onPick={(f) => setSlot(i, { file: f })}
+                    onClear={() => setSlot(i, { url: null, file: null })}
+                  />
+                ))}
+              </div>
+              {err("imageUrl") || err("images") ? (
+                <span className="mt-1 block text-[12px] text-red-400">
+                  {err("imageUrl") ?? err("images")}
+                </span>
+              ) : null}
+            </div>
 
-          {/* Only relevant when a model exists — hidden otherwise */}
-          {model || vehicle?.modelUrl ? (
-            <Field label="Model length (world units, 0.5–20)" error={err("modelLength")}>
-              <input className={inputCls} type="number" step="0.1" min={0.5} max={20} value={modelLength} onChange={(e) => setModelLength(e.target.value)} />
-            </Field>
-          ) : null}
+            <ModelField
+              file={model}
+              existing={vehicle?.modelUrl}
+              removed={removeModel}
+              onPick={(f) => {
+                setModel(f);
+                if (f) setRemoveModel(false);
+              }}
+              onToggleRemove={() => {
+                setRemoveModel((r) => !r);
+                setModel(null);
+              }}
+              error={err("modelUrl")}
+            />
 
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 text-[13px] text-cream">
-              <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} className="accent-accent" />
-              Featured
-            </label>
-            <label className="flex items-center gap-2 text-[13px] text-cream">
-              <input type="checkbox" checked={isAvailable} onChange={(e) => setIsAvailable(e.target.checked)} className="accent-accent" />
-              Listed (available)
-            </label>
-          </div>
+            {hasModel ? (
+              <Field
+                label="Model length (world units, 0.5–20)"
+                error={err("modelLength")}
+                hint="Controls the model's size on the detail page."
+              >
+                <input className={inputCls} type="number" step="0.1" min={0.5} max={20} value={modelLength} onChange={(e) => setModelLength(e.target.value)} />
+              </Field>
+            ) : null}
+          </Section>
+
+          {/* ── Visibility ── */}
+          <Section title="Visibility" icon={Eye}>
+            <div className="grid grid-cols-2 gap-3">
+              <Toggle
+                icon={Star}
+                label="Featured"
+                hint="Show first in the fleet"
+                checked={featured}
+                onChange={setFeatured}
+              />
+              <Toggle
+                icon={Eye}
+                label="Listed"
+                hint="Visible to customers"
+                checked={isAvailable}
+                onChange={setIsAvailable}
+              />
+            </div>
+          </Section>
         </form>
 
         {/* Footer actions */}
@@ -307,41 +417,119 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
   );
 }
 
-function FileField({
-  label,
-  accept,
+/** The 3D model uploader: pick a new .glb, or (when editing) keep / remove the
+ *  existing one. */
+function ModelField({
   file,
   existing,
+  removed,
   onPick,
+  onToggleRemove,
   error,
 }: {
-  label: string;
-  accept: string;
   file: File | null;
   existing?: string;
+  removed: boolean;
   onPick: (f: File | null) => void;
+  onToggleRemove: () => void;
   error?: string;
 }) {
+  const hasExisting = Boolean(existing) && !removed;
+
   return (
     <div>
-      <span className={labelCls}>{label}</span>
-      <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line bg-night/40 px-3 py-2.5 text-[13px] text-fog transition-colors hover:border-accent hover:text-cream">
-        <Upload className="h-4 w-4 shrink-0" />
-        <span className="truncate">
-          {file ? file.name : existing ? "Replace current file" : "Choose file"}
-        </span>
-        <input
-          type="file"
-          accept={accept}
-          className="hidden"
-          onChange={(e) => onPick(e.target.files?.[0] ?? null)}
-        />
-      </label>
+      <span className={labelCls}>3D model (.glb) — optional</span>
+
+      {/* A newly-picked file wins over anything else. */}
+      {file ? (
+        <div className="flex items-center gap-2 rounded-lg border border-accent/40 bg-accent/[0.06] px-3 py-2.5 text-[13px] text-cream">
+          <Box className="h-4 w-4 shrink-0 text-accent" />
+          <span className="min-w-0 flex-1 truncate">{file.name}</span>
+          <button type="button" onClick={() => onPick(null)} aria-label="Clear file" className="text-fog transition-colors hover:text-cream">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      ) : hasExisting ? (
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-night/40 px-3 py-2.5 text-[13px]">
+          <Box className="h-4 w-4 shrink-0 text-accent" />
+          <span className="min-w-0 flex-1 truncate text-cream">3D model attached</span>
+          <label className="cursor-pointer text-[12px] font-medium text-fog transition-colors hover:text-cream">
+            Replace
+            <input type="file" accept=".glb,model/gltf-binary" className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
+          </label>
+          <button
+            type="button"
+            onClick={onToggleRemove}
+            aria-label="Remove 3D model"
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-fog transition-colors hover:text-red-400"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Remove
+          </button>
+        </div>
+      ) : (
+        <>
+          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line bg-night/40 px-3 py-2.5 text-[13px] text-fog transition-colors hover:border-accent hover:text-cream">
+            <Upload className="h-4 w-4 shrink-0" />
+            <span className="truncate">Choose .glb file</span>
+            <input type="file" accept=".glb,model/gltf-binary" className="hidden" onChange={(e) => onPick(e.target.files?.[0] ?? null)} />
+          </label>
+          {removed && existing ? (
+            <span className="mt-1 block text-[11.5px] text-fog/70">
+              Current model will be removed on save.{" "}
+              <button type="button" onClick={onToggleRemove} className="text-accent">
+                Undo
+              </button>
+            </span>
+          ) : (
+            <span className="mt-1 block text-[11.5px] text-fog/70">
+              Without a model, the detail page shows the cover photo.
+            </span>
+          )}
+        </>
+      )}
       {error ? <span className="mt-1 block text-[12px] text-red-400">{error}</span> : null}
     </div>
   );
 }
 
+/** A card-style on/off toggle. */
+function Toggle({
+  icon: Icon,
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  icon: typeof Star;
+  label: string;
+  hint: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-colors ${
+        checked ? "border-accent/50 bg-accent/[0.06]" : "border-line bg-night/40 hover:border-cream/25"
+      }`}
+    >
+      <span
+        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+          checked ? "bg-accent/15 text-accent" : "bg-surface text-fog"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className={`block text-[13.5px] font-medium ${checked ? "text-cream" : "text-fog"}`}>
+          {label}
+        </span>
+        <span className="block text-[11.5px] text-fog">{hint}</span>
+      </span>
+    </button>
+  );
+}
 
 function PhotoSlot({
   label,
