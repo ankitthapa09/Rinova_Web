@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, useGLTF } from "@react-three/drei";
 import PreloadAsync from "./PreloadAsync";
+import PauseWhenHidden from "./PauseWhenHidden";
 import VehicleModel from "./VehicleModel";
 import { VEHICLES } from "./vehicles";
 
@@ -87,10 +88,8 @@ export default function FleetScene({ progressRef, animate = true }: FleetScenePr
           <Lightformer intensity={1.6} position={[6, 1.5, 1]} rotation-y={-Math.PI / 2} scale={[7, 1.2, 1]} color="#ffffff" />
         </Environment>
 
-        {/* Compile every vehicle's shader up front, off the main thread. Without
-            this three.js links each program the first time it is drawn — i.e.
-            mid-scroll, blocking for 100–400ms a vehicle. */}
         <PreloadAsync />
+        <PauseWhenHidden />
       </Suspense>
     </Canvas>
   );

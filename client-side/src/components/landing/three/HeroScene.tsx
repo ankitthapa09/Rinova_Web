@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, useGLTF } from "@react-three/drei";
 import PreloadAsync from "./PreloadAsync";
+import PauseWhenHidden from "./PauseWhenHidden";
 import VehicleModel from "./VehicleModel";
 
 const CAR_URL = "/models/jeep_rubicon.glb";
@@ -72,6 +73,7 @@ export default function HeroScene({ animate = true }: { animate?: boolean }) {
         </Environment>
 
         <PreloadAsync />
+        <PauseWhenHidden />
       </Suspense>
     </Canvas>
   );
