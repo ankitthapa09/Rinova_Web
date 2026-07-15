@@ -1,4 +1,4 @@
-import { vehicleRepository } from '@/repositories/vehicle.repository';
+import { vehicleRepository, type UpdateVehicleData } from '@/repositories/vehicle.repository';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 import type { VehicleDocument, VehicleCategory } from '@/models/vehicle.model';
@@ -50,9 +50,21 @@ export const vehicleService = {
 
   /** Slug stays fixed after creation — renames must not break shared URLs. */
   async update(id: string, input: UpdateVehicleInput): Promise<VehicleDocument> {
-    const vehicle = await vehicleRepository.updateById(id, input);
+    const { modelUrl, modelLength, ...rest } = input;
+    const data: UpdateVehicleData = { ...rest };
+    const unset: string[] = [];
+
+    if (modelUrl === null) {
+      // Admin removed the 3D showcase — drop the model and its length together.
+      unset.push('modelUrl', 'modelLength');
+    } else {
+      if (modelUrl !== undefined) data.modelUrl = modelUrl;
+      if (modelLength != null) data.modelLength = modelLength;
+    }
+
+    const vehicle = await vehicleRepository.updateById(id, data, unset);
     if (!vehicle) throw AppError.notFound('Vehicle not found');
-    logger.info('vehicle updated', { vehicleId: vehicle.id });
+    logger.info('vehicle updated', { vehicleId: vehicle.id, modelRemoved: modelUrl === null });
     return vehicle;
   },
 

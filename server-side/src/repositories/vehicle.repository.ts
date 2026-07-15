@@ -37,10 +37,17 @@ export const vehicleRepository = {
     return Vehicle.exists({ slug }).then((res) => res !== null);
   },
 
-  async updateById(id: string, data: UpdateVehicleData): Promise<VehicleDocument | null> {
+  /** `unset` lists paths to remove entirely (e.g. 'modelUrl' when the admin
+   *  deletes a vehicle's 3D model), as opposed to `data` which sets values. */
+  async updateById(
+    id: string,
+    data: UpdateVehicleData,
+    unset: string[] = [],
+  ): Promise<VehicleDocument | null> {
     const vehicle = await Vehicle.findById(id).exec();
     if (!vehicle) return null;
     vehicle.set(data);
+    for (const path of unset) vehicle.set(path, undefined);
     return vehicle.save();
   },
 
