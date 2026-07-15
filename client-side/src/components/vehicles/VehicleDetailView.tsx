@@ -340,7 +340,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
                 {vehicle.tagline}
               </p>
 
-              <p data-detail-item className="mt-5 text-[15px] leading-relaxed text-fog">
+              <p data-detail-item className="mt-5 whitespace-pre-line text-[15px] leading-relaxed text-fog">
                 {vehicle.description}
               </p>
 
