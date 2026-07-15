@@ -15,6 +15,10 @@ export interface IVehicle {
     transmission?: 'Manual' | 'Automatic';
     fuel: string;
     topSpeed?: string;
+    /** EV only — driving range on a full charge, in km */
+    range?: number;
+    /** EV only — battery capacity in kWh */
+    batteryCapacity?: number;
   };
   imageUrl: string;
   /** Photo gallery, up to 4 — images[0] is the cover and mirrors imageUrl */
@@ -74,6 +78,9 @@ const vehicleSchema = new Schema<IVehicle, VehicleModel>(
       transmission: { type: String, enum: ['Manual', 'Automatic'] },
       fuel: { type: String, required: [true, 'Fuel type is required'], trim: true },
       topSpeed: { type: String, trim: true },
+      // EV-only extras — left unset for combustion vehicles
+      range: { type: Number, min: 0, max: 2000 },
+      batteryCapacity: { type: Number, min: 0, max: 500 },
     },
     imageUrl: {
       type: String,
