@@ -5,7 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Users, Fuel, Gauge, Cog } from "lucide-react";
+import { ArrowLeft, Users, Fuel, Gauge, Cog, X, ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import SmoothScroll from "@/components/landing/SmoothScroll";
 import Cursor from "@/components/landing/Cursor";
@@ -80,6 +80,9 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
   const [myBooking, setMyBooking] = useState<Booking | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
+  // Photo lightbox — index of the open photo, or null when closed.
+  const [lightbox, setLightbox] = useState<number | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     vehicleApi.get(slug).then((v) => {
@@ -123,6 +126,27 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
       setCancelling(false);
     }
   };
+
+  // Gallery photos: uploaded shots, or the single cover for older vehicles.
+  const photos = vehicle ? (vehicle.images?.length ? vehicle.images : [vehicle.imageUrl]) : [];
+
+  // Lightbox keyboard nav + scroll lock while it's open.
+  useEffect(() => {
+    if (lightbox === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null);
+      if (e.key === "ArrowRight") setLightbox((i) => (i === null ? i : (i + 1) % photos.length));
+      if (e.key === "ArrowLeft")
+        setLightbox((i) => (i === null ? i : (i - 1 + photos.length) % photos.length));
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [lightbox, photos.length]);
 
   const days = useMemo(() => {
     if (!pickup || !dropoff) return 0;
@@ -190,10 +214,6 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
     }
   };
 
-  // Gallery: uploaded photos, falling back to the single cover for vehicles
-  // saved before multi-photo support.
-  const photos = vehicle ? (vehicle.images?.length ? vehicle.images : [vehicle.imageUrl]) : [];
-
   const specRows = vehicle
     ? ([
         vehicle.specs.seats ? { icon: Users, label: "Seats", value: `${vehicle.specs.seats}` } : null,
@@ -242,35 +262,50 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
               {gl?.webgl && vehicle.modelUrl ? (
                 <VehicleStage url={vehicle.modelUrl} length={vehicle.modelLength ?? 3.5} animate={gl.animate} />
               ) : gl ? (
-                <Image
-                  src={vehicle.imageUrl}
-                  alt={vehicle.name}
-                  fill
-                  sizes="(max-width: 1024px) 92vw, 55vw"
-                  className="object-contain p-10"
-                />
+                // No 3D model (or no WebGL): the cover photo fills the stage and
+                // opens the lightbox on click.
+                <button
+                  type="button"
+                  onClick={() => setLightbox(0)}
+                  aria-label={`Enlarge ${vehicle.name} photo`}
+                  className="group absolute inset-0 cursor-zoom-in"
+                >
+                  <Image
+                    src={vehicle.imageUrl}
+                    alt={vehicle.name}
+                    fill
+                    sizes="(max-width: 1024px) 92vw, 55vw"
+                    className="object-contain p-10 transition-transform duration-500 ease-expo group-hover:scale-[1.03]"
+                  />
+                  <span className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-line bg-night/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-fog backdrop-blur-sm">
+                    <Expand className="h-3 w-3" /> View
+                  </span>
+                </button>
               ) : null}
-              <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-line bg-night/70 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.15em] text-fog backdrop-blur-sm">
+              <span className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-line bg-night/70 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.15em] text-fog backdrop-blur-sm">
                 {gl?.webgl && vehicle.modelUrl ? "Live 3D · follows your cursor" : "Studio shot"}
               </span>
             </div>
 
-            {/* Photo gallery — uploaded shots below the 3D stage */}
+            {/* Photo gallery — click any shot to open it full-size */}
             {photos.length > 0 ? (
               <div data-detail-item className="mt-4 grid grid-cols-4 gap-3">
                 {photos.map((src, i) => (
-                  <div
+                  <button
+                    type="button"
                     key={`${src}-${i}`}
-                    className="relative aspect-[4/3] overflow-hidden rounded-xl border border-line bg-surface/40"
+                    onClick={() => setLightbox(i)}
+                    aria-label={`Enlarge ${vehicle.name} photo ${i + 1}`}
+                    className="group relative aspect-[4/3] cursor-zoom-in overflow-hidden rounded-xl border border-line bg-surface/40 transition-colors hover:border-accent/60"
                   >
                     <Image
                       src={src}
                       alt={`${vehicle.name} — photo ${i + 1}`}
                       fill
                       sizes="(max-width: 1024px) 23vw, 13vw"
-                      className="object-cover transition-transform duration-500 ease-expo hover:scale-105"
+                      className="object-cover transition-transform duration-500 ease-expo group-hover:scale-105"
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : null}
@@ -410,6 +445,70 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
           </div>
         )}
       </div>
+
+      {/* Photo lightbox */}
+      {vehicle && lightbox !== null ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-night/90 backdrop-blur-sm"
+          onClick={() => setLightbox(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${vehicle.name} photo viewer`}
+        >
+          <button
+            type="button"
+            onClick={() => setLightbox(null)}
+            aria-label="Close"
+            className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface/70 text-cream transition-colors hover:border-accent hover:text-accent"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div
+            className="relative mx-auto flex h-[80vh] w-[92vw] max-w-5xl items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={photos[lightbox]}
+              alt={`${vehicle.name} — photo ${lightbox + 1}`}
+              fill
+              sizes="92vw"
+              className="object-contain"
+              priority
+            />
+          </div>
+
+          {photos.length > 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightbox((i) => (i === null ? i : (i - 1 + photos.length) % photos.length));
+                }}
+                aria-label="Previous photo"
+                className="absolute left-5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface/70 text-cream transition-colors hover:border-accent hover:text-accent"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightbox((i) => (i === null ? i : (i + 1) % photos.length));
+                }}
+                aria-label="Next photo"
+                className="absolute right-5 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-surface/70 text-cream transition-colors hover:border-accent hover:text-accent"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border border-line bg-surface/70 px-4 py-1.5 text-[12px] text-fog backdrop-blur-sm">
+                {lightbox + 1} / {photos.length}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
