@@ -224,6 +224,9 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
           ? { icon: Cog, label: "Transmission", value: vehicle.specs.transmission }
           : null,
         { icon: Fuel, label: isEV ? "Power" : "Fuel", value: vehicle.specs.fuel },
+        vehicle.specs.engineCC
+          ? { icon: Cog, label: "Engine", value: `${vehicle.specs.engineCC} cc` }
+          : null,
         vehicle.specs.range
           ? { icon: Route, label: "Range", value: `${vehicle.specs.range} km` }
           : null,

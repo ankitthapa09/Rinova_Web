@@ -15,12 +15,15 @@ import { toast } from "@/components/ui/toast";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as VehicleCategory[];
 const FUEL_OPTIONS = ["Petrol", "Diesel", "Electric", "Hybrid", "CNG"];
+const DESCRIPTION_MAX = 2000;
 
 /** Electric & hybrid vehicles get the extra range/battery fields. */
 const isElectric = (fuel: string) => fuel === "Electric" || fuel === "Hybrid";
+/** Anything with a combustion engine gets the cc field. */
+const hasEngine = (fuel: string) => fuel !== "Electric";
 
 const inputCls =
-  "w-full rounded-lg border border-line bg-night/40 px-3 py-2.5 text-[14px] text-cream outline-none transition-colors placeholder:text-fog/50 focus:border-accent";
+  "w-full rounded-lg border border-line bg-night/40 px-3 py-3 text-[14px] text-cream outline-none transition-colors placeholder:text-fog/50 focus:border-accent";
 const labelCls = "mb-1.5 block text-[11px] font-medium uppercase tracking-[0.14em] text-fog";
 
 function Field({
@@ -87,6 +90,9 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
   const [seats, setSeats] = useState(vehicle?.specs.seats ? String(vehicle.specs.seats) : "");
   const [transmission, setTransmission] = useState(vehicle?.specs.transmission ?? "");
   const [topSpeed, setTopSpeed] = useState(vehicle?.specs.topSpeed ?? "");
+  const [engineCC, setEngineCC] = useState(
+    vehicle?.specs.engineCC ? String(vehicle.specs.engineCC) : "",
+  );
   const [range, setRange] = useState(vehicle?.specs.range ? String(vehicle.specs.range) : "");
   const [battery, setBattery] = useState(
     vehicle?.specs.batteryCapacity ? String(vehicle.specs.batteryCapacity) : "",
@@ -117,22 +123,43 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
 
   // ── Dynamic conditions ──────────────────────────────────
   const ev = isElectric(fuel);
+  const combustion = hasEngine(fuel);
   const showSeats = category !== "bike";
   // A model is in play if a new file is picked, or an existing one is kept.
   const keepsExistingModel = Boolean(vehicle?.modelUrl) && !removeModel && !model;
   const hasModel = Boolean(model) || keepsExistingModel;
   const fuelOptions = FUEL_OPTIONS.includes(fuel) ? FUEL_OPTIONS : [fuel, ...FUEL_OPTIONS];
 
+  /** Everything is required except the 3D model and the extra photos — only the
+   *  cover is mandatory. Conditional fields are required when their row shows. */
+  const validate = (): Record<string, string> => {
+    const v: Record<string, string> = {};
+    if (!name.trim()) v.name = "Name is required.";
+    if (!tagline.trim()) v.tagline = "Tagline is required.";
+    if (!pricePerDay || Number(pricePerDay) <= 0) v.pricePerDay = "Price is required.";
+    if (description.trim().length < 10) v.description = "Description must be at least 10 characters.";
+    if (!fuel) v["specs.fuel"] = "Fuel is required.";
+    if (!transmission) v["specs.transmission"] = "Transmission is required.";
+    if (showSeats && !seats) v["specs.seats"] = "Seats is required.";
+    if (!topSpeed.trim()) v["specs.topSpeed"] = "Top speed is required.";
+    if (combustion && !engineCC) v["specs.engineCC"] = "Engine size is required.";
+    if (ev && !range) v["specs.range"] = "Range is required.";
+    if (ev && !battery) v["specs.batteryCapacity"] = "Battery is required.";
+    if (!photoSlots[0].file && !photoSlots[0].url) v.imageUrl = "A cover photo is required.";
+    return v;
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
-    setErrors({});
 
-    const hasCover = Boolean(photoSlots[0].file || photoSlots[0].url);
-    if (!hasCover) {
-      setErrors({ imageUrl: "A cover photo is required." });
+    const found = validate();
+    if (Object.keys(found).length > 0) {
+      setErrors(found);
+      toast.error("Please complete the highlighted fields.");
       return;
     }
+    setErrors({});
 
     try {
       const anyNewFile = photoSlots.some((s) => s.file) || Boolean(model);
@@ -145,12 +172,13 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
       }
       const imageUrl = images[0];
 
-      // Only build the EV specs when the fuel type calls for them.
+      // Conditional specs — cc for combustion, range/battery for electric.
       const specs: VehicleInput["specs"] = {
         fuel: fuel.trim(),
         ...(showSeats && seats ? { seats: Number(seats) } : {}),
         ...(transmission ? { transmission: transmission as "Manual" | "Automatic" } : {}),
         ...(topSpeed.trim() ? { topSpeed: topSpeed.trim() } : {}),
+        ...(combustion && engineCC ? { engineCC: Number(engineCC) } : {}),
         ...(ev && range ? { range: Number(range) } : {}),
         ...(ev && battery ? { batteryCapacity: Number(battery) } : {}),
       };
@@ -267,14 +295,32 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
             <Field label="Tagline" error={err("tagline")} hint="A short line shown under the name.">
               <input className={inputCls} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="The original superbike" />
             </Field>
-            <Field label="Description" error={err("description")} hint="At least 10 characters.">
+            <div>
+              <div className="flex items-baseline justify-between">
+                <span className={labelCls}>Description</span>
+                <span
+                  className={`text-[11px] tabular-nums ${
+                    description.length > DESCRIPTION_MAX ? "text-red-400" : "text-fog/60"
+                  }`}
+                >
+                  {description.length} / {DESCRIPTION_MAX}
+                </span>
+              </div>
               <textarea
-                className={`${inputCls} min-h-[90px] resize-y`}
+                className={`${inputCls} max-h-[420px] min-h-[150px] resize-y [field-sizing:content]`}
                 value={description}
+                maxLength={DESCRIPTION_MAX}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="A classic inline-four with presence…"
+                placeholder="A classic inline-four with presence — engine, ride quality, standout features…"
               />
-            </Field>
+              {err("description") ? (
+                <span className="mt-1 block text-[12px] text-red-400">{err("description")}</span>
+              ) : (
+                <span className="mt-1 block text-[11.5px] text-fog/70">
+                  At least 10 characters. The box grows as you type.
+                </span>
+              )}
+            </div>
           </Section>
 
           {/* ── Specifications (dynamic) ── */}
@@ -304,6 +350,11 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
               <Field label="Top speed" error={err("specs.topSpeed")}>
                 <input className={inputCls} value={topSpeed} onChange={(e) => setTopSpeed(e.target.value)} placeholder="200 km/h" />
               </Field>
+              {combustion ? (
+                <Field label="Engine (cc)" error={err("specs.engineCC")} hint="Displacement.">
+                  <input className={inputCls} type="number" min={0} value={engineCC} onChange={(e) => setEngineCC(e.target.value)} placeholder="449" />
+                </Field>
+              ) : null}
             </div>
 
             {/* EV-only fields, revealed for Electric / Hybrid */}

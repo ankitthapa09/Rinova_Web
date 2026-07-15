@@ -6,6 +6,8 @@ const specsSchema = z.object({
   transmission: z.enum(['Manual', 'Automatic']).optional(),
   fuel: z.string({ error: 'Fuel type is required' }).trim().min(1, 'Fuel type is required'),
   topSpeed: z.string().trim().max(20).optional(),
+  // Combustion only — sent when the fuel type has an engine
+  engineCC: z.coerce.number().min(0).max(10000).optional(),
   // EV-only — the form sends these only when fuel is Electric
   range: z.coerce.number().min(0).max(2000).optional(),
   batteryCapacity: z.coerce.number().min(0).max(500).optional(),
@@ -33,7 +35,7 @@ export const createVehicleSchema = z.object({
   modelUrl: z.string().trim().min(1).optional(),
   modelLength: z.coerce.number().min(0.5).max(20).optional(),
   featured: z.boolean().optional(),
-  description: z.string({ error: 'Description is required' }).trim().min(10).max(500),
+  description: z.string({ error: 'Description is required' }).trim().min(10).max(2000),
   isAvailable: z.boolean().optional(),
 });
 

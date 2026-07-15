@@ -7,9 +7,11 @@ export interface VehicleSpecs {
   transmission?: "Manual" | "Automatic";
   fuel: string;
   topSpeed?: string;
-  /** EV only — driving range on a full charge, in km */
+  // Combustion only - engine displacement in cc
+  engineCC?: number;
+  // EV only - driving range on a full charge, in km
   range?: number;
-  /** EV only — battery capacity in kWh */
+  // EV only - battery capacity in kWh 
   batteryCapacity?: number;
 }
 
@@ -54,8 +56,7 @@ export interface VehicleInput {
   isAvailable?: boolean;
 }
 
-/** Edit payload. `modelUrl: null` removes the vehicle's 3D model; leaving it
- *  out keeps the existing one. */
+
 export type VehicleUpdate = Partial<Omit<VehicleInput, "modelUrl" | "modelLength">> & {
   modelUrl?: string | null;
   modelLength?: number | null;
