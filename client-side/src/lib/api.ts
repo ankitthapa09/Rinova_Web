@@ -140,4 +140,22 @@ export const authApi = {
   me(): Promise<{ user: ApiUser }> {
     return request<{ user: ApiUser }>("/auth/me");
   },
+
+  /** Requests a reset link — the server never says whether the email exists. */
+  async forgotPassword(email: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    return message;
+  },
+
+  /** Sets a new password using the token from the emailed link. */
+  async resetPassword(token: string, password: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    });
+    return message;
+  },
 };

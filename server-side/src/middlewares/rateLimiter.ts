@@ -22,3 +22,13 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   message: limited,
 });
+
+// Reset endpoints count every request — forgot-password always answers 200,
+// so a failures-only limiter would never throttle it.
+export const resetLimiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  limit: env.LOGIN_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: limited,
+});

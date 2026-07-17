@@ -93,7 +93,7 @@ export default function LoginForm() {
           </span>
           Remember me
         </label>
-        <Link href="#" className="nav-link text-fog hover:text-cream">
+        <Link href="/forgot-password" className="nav-link text-fog hover:text-cream">
           Forgot password?
         </Link>
       </div>

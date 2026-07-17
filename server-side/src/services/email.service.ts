@@ -3,13 +3,13 @@ import { env } from '@/config/env';
 import { logger } from '@/config/logger';
 
 
-/** True only when every SMTP credential is present and none is a placeholder. */
+/** True when every SMTP credential is present and none is a placeholder. */
 function smtpConfigured(): boolean {
   const values = [env.SMTP_HOST, env.SMTP_USER, env.SMTP_PASS];
   return (
     values.every((v) => typeof v === 'string' && v.length > 0) &&
     env.SMTP_PORT !== undefined &&
-    !values.some((v) => v!.startsWith('your-') || v!.startsWith('smtp.example'))
+    !values.some((v) => /^your[-_@]|example/i.test(v!))
   );
 }
 
@@ -38,7 +38,6 @@ export interface MailMessage {
 export const emailService = {
   async send(message: MailMessage): Promise<void> {
     if (!smtpConfigured()) {
-      // Dev fallback — surface the message where the developer is looking.
       logger.info('email (console fallback — SMTP not configured)', {
         to: message.to,
         subject: message.subject,
@@ -55,8 +54,7 @@ export const emailService = {
     logger.info('email sent', { to: message.to, subject: message.subject });
   },
 
-  /** The password reset email. `resetUrl` carries the raw token; this is the
-   *  only place outside the user's inbox where it ever appears. */
+  /** The reset email — the only place the raw token appears outside the inbox. */
   passwordReset(to: string, name: string, resetUrl: string): Promise<void> {
     const firstName = name.split(' ')[0];
     return emailService.send({

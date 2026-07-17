@@ -6,10 +6,13 @@ import type { UserRole } from '@/models/user.model';
 export interface AccessTokenPayload {
   sub: string;
   role: UserRole;
+  /** issued-at (seconds), set by jwt.sign */
+  iat?: number;
 }
 
 export interface RefreshTokenPayload {
   sub: string;
+  iat?: number;
 }
 
 export interface TokenPair {

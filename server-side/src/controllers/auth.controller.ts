@@ -66,6 +66,23 @@ export const authController = {
     res.status(200).json({ success: true, data: null });
   }),
 
+  forgotPassword: catchAsync(async (req: Request, res: Response) => {
+    await authService.forgotPassword(req.body.email);
+    // Identical response whether the account exists or not.
+    res.status(200).json({
+      success: true,
+      data: { message: 'If that email is registered, a reset link is on its way.' },
+    });
+  }),
+
+  resetPassword: catchAsync(async (req: Request, res: Response) => {
+    await authService.resetPassword(req.body.token, req.body.password);
+    res.status(200).json({
+      success: true,
+      data: { message: 'Password updated — you can sign in with it now.' },
+    });
+  }),
+
   // Requires requireAuth before it in the chain.
   me: catchAsync(async (req: Request, res: Response) => {
     const user = await userRepository.findById(req.user!.sub);

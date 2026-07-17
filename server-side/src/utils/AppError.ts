@@ -34,4 +34,8 @@ export class AppError extends Error {
   static tooMany(message = 'Too many requests'): AppError {
     return new AppError(429, message);
   }
+  /** Operational 500 — a dependency failed; safe to show, worth retrying. */
+  static internal(message = 'Something went wrong — please try again'): AppError {
+    return new AppError(500, message);
+  }
 }

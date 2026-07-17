@@ -22,6 +22,24 @@ export const userRepository = {
     return User.findById(id).exec();
   },
 
+  findByIdWithPasswordChangedAt(id: string): Promise<UserDocument | null> {
+    return User.findById(id).select('+passwordChangedAt').exec();
+  },
+
+  findByEmailForReset(email: string): Promise<UserDocument | null> {
+    return User.findOne({ email }).select('+passwordResetToken +passwordResetExpires').exec();
+  },
+
+  /** Matches the hash of an emailed token, only while unexpired. */
+  findByValidResetTokenHash(tokenHash: string): Promise<UserDocument | null> {
+    return User.findOne({
+      passwordResetToken: tokenHash,
+      passwordResetExpires: { $gt: new Date() },
+    })
+      .select('+passwordResetToken +passwordResetExpires')
+      .exec();
+  },
+
   existsByEmail(email: string): Promise<boolean> {
     return User.exists({ email }).then((res) => res !== null);
   },
