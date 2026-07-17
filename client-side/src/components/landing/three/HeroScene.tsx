@@ -4,6 +4,8 @@ import { Suspense, useRef } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, useGLTF } from "@react-three/drei";
+import PreloadAsync from "./PreloadAsync";
+import PauseWhenHidden from "./PauseWhenHidden";
 import VehicleModel from "./VehicleModel";
 
 const CAR_URL = "/models/jeep_rubicon.glb";
@@ -60,13 +62,18 @@ export default function HeroScene({ animate = true }: { animate?: boolean }) {
 
         <CarRig animate={animate} />
 
-        {/* Procedural studio reflections — no external HDR fetch */}
-        <Environment resolution={256}>
+        {/* Procedural studio reflections — no external HDR fetch. 128 is plenty
+            for soft studio bounce; 256 doubled the load-time hitch for
+            reflections nobody can resolve on a car this size. */}
+        <Environment resolution={128}>
           <Lightformer intensity={5} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 6, 1]} color="#fff8f0" />
           <Lightformer intensity={3} position={[-6, 1, -2]} rotation-y={Math.PI / 2} scale={[7, 1.6, 1]} color="#FF5C1A" />
           <Lightformer intensity={1.6} position={[6, 1.5, 1]} rotation-y={-Math.PI / 2} scale={[6, 1.2, 1]} color="#ffffff" />
           <Lightformer intensity={1.2} position={[0, 1, 6]} scale={[8, 1, 1]} color="#ffd9c2" />
         </Environment>
+
+        <PreloadAsync />
+        <PauseWhenHidden />
       </Suspense>
     </Canvas>
   );

@@ -6,6 +6,11 @@ const specsSchema = z.object({
   transmission: z.enum(['Manual', 'Automatic']).optional(),
   fuel: z.string({ error: 'Fuel type is required' }).trim().min(1, 'Fuel type is required'),
   topSpeed: z.string().trim().max(20).optional(),
+  // Combustion only — sent when the fuel type has an engine
+  engineCC: z.coerce.number().min(0).max(10000).optional(),
+  // EV-only — the form sends these only when fuel is Electric
+  range: z.coerce.number().min(0).max(2000).optional(),
+  batteryCapacity: z.coerce.number().min(0).max(500).optional(),
 });
 
 /** Admin create — slug is generated server-side from the name, never accepted */
@@ -30,15 +35,21 @@ export const createVehicleSchema = z.object({
   modelUrl: z.string().trim().min(1).optional(),
   modelLength: z.coerce.number().min(0.5).max(20).optional(),
   featured: z.boolean().optional(),
-  description: z.string({ error: 'Description is required' }).trim().min(10).max(500),
+  description: z.string({ error: 'Description is required' }).trim().min(10).max(2000),
   isAvailable: z.boolean().optional(),
 });
 
-/** Admin update — any subset of the creatable fields */
-export const updateVehicleSchema = createVehicleSchema.partial().refine(
-  (body) => Object.keys(body).length > 0,
-  { message: 'Provide at least one field to update' },
-);
+/** Admin update — any subset of the creatable fields. `modelUrl: null`
+ *  explicitly removes the 3D model; omitting it leaves the model untouched. */
+export const updateVehicleSchema = createVehicleSchema
+  .partial()
+  .extend({
+    modelUrl: z.string().trim().min(1).nullable().optional(),
+    modelLength: z.coerce.number().min(0.5).max(20).nullable().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'Provide at least one field to update',
+  });
 
 /** Public list query — ?category=car */
 export const listVehiclesQuerySchema = z.object({

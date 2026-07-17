@@ -2,6 +2,19 @@ import { request, BASE_URL, getAccessToken, ApiError } from "@/lib/api";
 
 export type VehicleCategory = "bike" | "car" | "suv" | "van" | "bus";
 
+export interface VehicleSpecs {
+  seats?: number;
+  transmission?: "Manual" | "Automatic";
+  fuel: string;
+  topSpeed?: string;
+  // Combustion only - engine displacement in cc
+  engineCC?: number;
+  // EV only - driving range on a full charge, in km
+  range?: number;
+  // EV only - battery capacity in kWh 
+  batteryCapacity?: number;
+}
+
 export interface Vehicle {
   _id: string;
   slug: string;
@@ -9,12 +22,7 @@ export interface Vehicle {
   category: VehicleCategory;
   tagline: string;
   pricePerDay: number;
-  specs: {
-    seats?: number;
-    transmission?: "Manual" | "Automatic";
-    fuel: string;
-    topSpeed?: string;
-  };
+  specs: VehicleSpecs;
   imageUrl: string;
   /** Photo gallery, up to 4 — images[0] is the cover and mirrors imageUrl */
   images: string[];
@@ -37,12 +45,7 @@ export interface VehicleInput {
   category: VehicleCategory;
   tagline: string;
   pricePerDay: number;
-  specs: {
-    seats?: number;
-    transmission?: "Manual" | "Automatic";
-    fuel: string;
-    topSpeed?: string;
-  };
+  specs: VehicleSpecs;
   imageUrl: string;
   /** Optional gallery (max 4) — the first entry becomes the cover */
   images?: string[];
@@ -52,6 +55,12 @@ export interface VehicleInput {
   description: string;
   isAvailable?: boolean;
 }
+
+
+export type VehicleUpdate = Partial<Omit<VehicleInput, "modelUrl" | "modelLength">> & {
+  modelUrl?: string | null;
+  modelLength?: number | null;
+};
 
 export const CATEGORY_LABELS: Record<VehicleCategory, string> = {
   bike: "Bikes",
@@ -68,7 +77,7 @@ export function formatNpr(amount: number): string {
 export type UploadKind = "image" | "model";
 
 export const vehicleApi = {
-  // ── Public ─────────────────────────────────────────────
+  // Public
   async list(category?: VehicleCategory): Promise<Vehicle[]> {
     const qs = category ? `?category=${category}` : "";
     const { vehicles } = await request<{ vehicles: Vehicle[] }>(`/vehicles${qs}`);
@@ -100,7 +109,7 @@ export const vehicleApi = {
     return vehicle;
   },
 
-  async update(id: string, input: Partial<VehicleInput>): Promise<Vehicle> {
+  async update(id: string, input: VehicleUpdate): Promise<Vehicle> {
     const { vehicle } = await request<{ vehicle: Vehicle }>(`/vehicles/${id}`, {
       method: "PATCH",
       body: JSON.stringify(input),
@@ -112,12 +121,7 @@ export const vehicleApi = {
     await request<null>(`/vehicles/${id}`, { method: "DELETE" });
   },
 
-  /**
-   * Uploads one file (photo or GLB) to the admin media endpoint and returns its
-   * hosted URL. Can't use `request` — multipart needs the browser to set its own
-   * Content-Type boundary, so this does a direct fetch and mirrors the same
-   * envelope/error handling.
-   */
+
   async uploadFile(kind: UploadKind, file: File): Promise<{ url: string; publicId: string }> {
     const form = new FormData();
     form.append("file", file);

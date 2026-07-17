@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { gsap, EASE, ScrollTrigger } from "./gsap";
 import { useReveal } from "./useReveal";
@@ -26,6 +26,27 @@ export default function Fleet() {
   const firstRender = useRef(true);
   const gl = useWebGL();
   useReveal(sectionRef);
+
+  // The stage holds five vehicles — parsing and uploading them costs a few
+  // hundred ms. Mounting it with the page makes the hero pay that bill while
+  // the visitor is still looking at the hero. Mount a screen early instead:
+  // far enough ahead that it's warm on arrival, late enough to leave the hero alone.
+  const [stageReady, setStageReady] = useState(false);
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section || stageReady) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setStageReady(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "100% 0px" },
+    );
+    io.observe(section);
+    return () => io.disconnect();
+  }, [stageReady]);
 
   // Desktop: pin + scrub category progress
   useLayoutEffect(() => {
@@ -95,7 +116,7 @@ export default function Fleet() {
         </div>
 
         {/* 3D stage */}
-        {gl?.webgl && (
+        {gl?.webgl && stageReady && (
           <div className="absolute inset-0">
             <FleetScene progressRef={progressRef} animate={gl.animate} />
           </div>

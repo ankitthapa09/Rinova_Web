@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { useGLTF } from "@react-three/drei";
+import { SkeletonUtils } from "three-stdlib";
 
 interface VehicleModelProps {
   url: string;
@@ -11,16 +12,11 @@ interface VehicleModelProps {
   yaw?: number;
 }
 
-/**
- * Loads a glTF vehicle, clones it (so hero + fleet can share a file),
- * normalizes its size, and grounds it: origin = center of its footprint,
- * wheels resting on y = 0.
- */
 export default function VehicleModel({ url, length, yaw = 0 }: VehicleModelProps) {
   const { scene } = useGLTF(url);
 
   const { object, scale, offset } = useMemo(() => {
-    const cloned = scene.clone(true);
+    const cloned = SkeletonUtils.clone(scene);
     const box = new THREE.Box3().setFromObject(cloned);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());

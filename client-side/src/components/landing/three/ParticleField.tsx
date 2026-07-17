@@ -3,6 +3,8 @@
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
+import PreloadAsync from "./PreloadAsync";
+import PauseWhenHidden from "./PauseWhenHidden";
 
 function Mist({ animate }: { animate: boolean }) {
   const points = useRef<THREE.Points>(null);
@@ -53,6 +55,8 @@ export default function ParticleField({ animate = true }: { animate?: boolean })
       className="!pointer-events-none"
     >
       <Mist animate={animate} />
+      <PreloadAsync />
+      <PauseWhenHidden />
     </Canvas>
   );
 }

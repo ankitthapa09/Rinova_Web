@@ -4,6 +4,8 @@ import { Suspense, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, Lightformer, useGLTF } from "@react-three/drei";
+import PreloadAsync from "./PreloadAsync";
+import PauseWhenHidden from "./PauseWhenHidden";
 import VehicleModel from "./VehicleModel";
 import { VEHICLES } from "./vehicles";
 
@@ -16,11 +18,6 @@ interface RigProps {
   animate: boolean;
 }
 
-/**
- * All five vehicles live in one scene, spread along X. A damped progress
- * value slides them through the stage: the active vehicle sits centered
- * at full size while neighbours wait in the wings, smaller and turned away.
- */
 function CarouselRig({ progressRef, animate }: RigProps) {
   const groups = useRef<(THREE.Group | null)[]>([]);
   const smooth = useRef(0);
@@ -90,6 +87,9 @@ export default function FleetScene({ progressRef, animate = true }: FleetScenePr
           <Lightformer intensity={3} position={[-6, 1, -2]} rotation-y={Math.PI / 2} scale={[8, 1.6, 1]} color="#FF5C1A" />
           <Lightformer intensity={1.6} position={[6, 1.5, 1]} rotation-y={-Math.PI / 2} scale={[7, 1.2, 1]} color="#ffffff" />
         </Environment>
+
+        <PreloadAsync />
+        <PauseWhenHidden />
       </Suspense>
     </Canvas>
   );

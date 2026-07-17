@@ -70,22 +70,24 @@ export default function AuthScene({
     <Canvas
       dpr={[1, 1.5]}
       camera={{ position: [0, 0.8, 8.2], fov: 32 }}
-      gl={{ antialias: true, alpha: true }}
+      gl={{ antialias: true, alpha: true, toneMappingExposure: 0.85 }}
       className="!pointer-events-none"
     >
       <Suspense fallback={null}>
-        <ambientLight intensity={0.15} />
-        <spotLight position={[6, 8, 5]} intensity={90} angle={0.45} penumbra={1} color="#fff6ec" />
-        <spotLight position={[-7, 3, -6]} intensity={170} angle={0.5} penumbra={1} color="#FF5C1A" />
+        {/* Intensities kept moderate: at the old 90/170 a pure-white surface
+            (dirt-bike number plates) clipped to a featureless white blob. */}
+        <ambientLight intensity={0.2} />
+        <spotLight position={[6, 8, 5]} intensity={45} angle={0.45} penumbra={1} color="#fff6ec" />
+        <spotLight position={[-7, 3, -6]} intensity={80} angle={0.5} penumbra={1} color="#FF5C1A" />
 
         <VehicleRig url={url} length={length} animate={animate} />
 
         {/* Procedural studio reflections — no external HDR fetch */}
         <Environment resolution={256}>
-          <Lightformer intensity={5} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 6, 1]} color="#fff8f0" />
-          <Lightformer intensity={3} position={[-6, 1, -2]} rotation-y={Math.PI / 2} scale={[7, 1.6, 1]} color="#FF5C1A" />
-          <Lightformer intensity={1.6} position={[6, 1.5, 1]} rotation-y={-Math.PI / 2} scale={[6, 1.2, 1]} color="#ffffff" />
-          <Lightformer intensity={1.2} position={[0, 1, 6]} scale={[8, 1, 1]} color="#ffd9c2" />
+          <Lightformer intensity={2.6} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 6, 1]} color="#fff8f0" />
+          <Lightformer intensity={2} position={[-6, 1, -2]} rotation-y={Math.PI / 2} scale={[7, 1.6, 1]} color="#FF5C1A" />
+          <Lightformer intensity={1.2} position={[6, 1.5, 1]} rotation-y={-Math.PI / 2} scale={[6, 1.2, 1]} color="#ffffff" />
+          <Lightformer intensity={1} position={[0, 1, 6]} scale={[8, 1, 1]} color="#ffd9c2" />
         </Environment>
       </Suspense>
     </Canvas>

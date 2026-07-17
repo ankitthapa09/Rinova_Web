@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { CarFront, CalendarRange, ShieldCheck, ArrowRight } from "lucide-react";
+import { CarFront, CalendarRange, Droplets, ShieldCheck, ArrowRight } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import { vehicleApi } from "@/lib/vehicleApi";
 import { userApi } from "@/lib/userApi";
 import { bookingApi } from "@/lib/bookingApi";
+import { washApi } from "@/lib/washApi";
 import { useAdminUser } from "@/components/admin/AdminShell";
 
 function greeting(): string {
@@ -87,6 +88,7 @@ export default function AdminOverview() {
   const [fleetSize, setFleetSize] = useState<number | null>(null);
   const [customerCount, setCustomerCount] = useState<number | null>(null);
   const [activeBookings, setActiveBookings] = useState<number | null>(null);
+  const [pendingWashes, setPendingWashes] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -131,6 +133,14 @@ export default function AdminOverview() {
       .catch(() => {
         if (!cancelled) setActiveBookings(null);
       });
+    washApi
+      .listAll()
+      .then((orders) => {
+        if (!cancelled) setPendingWashes(orders.filter((o) => o.status === "pending").length);
+      })
+      .catch(() => {
+        if (!cancelled) setPendingWashes(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -150,12 +160,17 @@ export default function AdminOverview() {
         </p>
       </header>
 
-      <section className="mt-10 grid gap-4 sm:grid-cols-3">
+      <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Fleet Size" value={fleetSize ?? "—"} hint="Vehicles listed for rent" />
         <StatCard
           label="Active Bookings"
           value={activeBookings ?? "—"}
           hint="Pending & confirmed rentals"
+        />
+        <StatCard
+          label="Wash Requests"
+          value={pendingWashes ?? "—"}
+          hint={pendingWashes ? "Waiting on your approval" : "Nothing to approve"}
         />
         <StatCard label="Customers" value={customerCount ?? "—"} hint="Registered accounts" />
       </section>
@@ -176,6 +191,12 @@ export default function AdminOverview() {
             icon={CalendarRange}
             title="Review bookings"
             copy="Approve rental requests as they come in."
+          />
+          <ActionCard
+            href="/admin/washes"
+            icon={Droplets}
+            title="Run the wash bays"
+            copy="Approve washes and see who's rolling in today."
           />
         </div>
       </section>

@@ -2,12 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Users, Fuel, Gauge } from "lucide-react";
+import { ArrowRight, Users, Fuel, Gauge, Cog, Zap, Route } from "lucide-react";
 import { CATEGORY_LABELS, formatNpr, type Vehicle } from "@/lib/vehicleApi";
+
+/** A bare number like "180" reads as a raw value — give it a unit. */
+function speedLabel(topSpeed?: string): string | null {
+  if (!topSpeed) return null;
+  const t = topSpeed.trim();
+  return /^\d+$/.test(t) ? `${t} km/h` : t;
+}
 
 /** One vehicle in the grid — image stage on top, facts below. */
 export default function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const { specs } = vehicle;
+  const isEV = /electric|hybrid/i.test(specs.fuel);
+  const speed = speedLabel(specs.topSpeed);
   return (
     <Link
       data-vehicle-card
@@ -27,9 +36,16 @@ export default function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 30vw"
           className="card-img object-contain p-5 drop-shadow-[0_18px_24px_rgba(0,0,0,0.45)]"
         />
-        <span className="absolute left-4 top-4 rounded-full border border-line bg-night/70 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-fog backdrop-blur-sm">
-          {CATEGORY_LABELS[vehicle.category]}
-        </span>
+        <div className="absolute left-4 top-4 flex items-center gap-2">
+          <span className="rounded-full border border-line bg-night/70 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-fog backdrop-blur-sm">
+            {CATEGORY_LABELS[vehicle.category]}
+          </span>
+          {isEV ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[#4EA8DE]/40 bg-[#4EA8DE]/15 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-[#4EA8DE] backdrop-blur-sm">
+              <Zap className="h-3 w-3" /> EV
+            </span>
+          ) : null}
+        </div>
         {vehicle.featured ? (
           <span className="absolute right-4 top-4 rounded-full bg-accent px-3 py-1 text-[10px] font-medium uppercase tracking-[0.15em] text-night">
             Featured
@@ -46,18 +62,28 @@ export default function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
           <ArrowRight className="card-arrow mt-1.5 h-4 w-4 shrink-0 text-fog group-hover:text-accent" />
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-fog">
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-fog">
           {specs.seats ? (
             <span className="inline-flex items-center gap-1.5">
               <Users className="h-3.5 w-3.5" /> {specs.seats} seats
             </span>
           ) : null}
+          {specs.transmission ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Cog className="h-3.5 w-3.5" /> {specs.transmission}
+            </span>
+          ) : null}
           <span className="inline-flex items-center gap-1.5">
             <Fuel className="h-3.5 w-3.5" /> {specs.fuel}
           </span>
-          {specs.topSpeed ? (
+          {isEV && specs.range ? (
             <span className="inline-flex items-center gap-1.5">
-              <Gauge className="h-3.5 w-3.5" /> {specs.topSpeed}
+              <Route className="h-3.5 w-3.5" /> {specs.range} km
+            </span>
+          ) : null}
+          {speed ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Gauge className="h-3.5 w-3.5" /> {speed}
             </span>
           ) : null}
         </div>
