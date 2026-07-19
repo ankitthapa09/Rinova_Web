@@ -8,6 +8,8 @@ export type UserRole = 'user' | 'admin';
 /** How long a reset link stays usable. Short on purpose — the link sits in an
  *  inbox, which is the weakest part of the chain. */
 export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
+/** Verification is lower stakes than reset, so the link can live longer. */
+export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface IUser {
   name: string;
@@ -25,6 +27,9 @@ export interface IUser {
   /** When the password last changed. Tokens minted before this are rejected,
    *  which logs every existing session out on a reset. */
   passwordChangedAt?: Date;
+  /** Same hashed-token pattern as the reset pair. */
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +40,8 @@ export interface IUserMethods {
    *  the email. The raw value exists in memory and the inbox — nowhere else. */
   createPasswordResetToken(): string;
   clearPasswordReset(): void;
+  createEmailVerificationToken(): string;
+  clearEmailVerification(): void;
 }
 
 export type UserDocument = HydratedDocument<IUser, IUserMethods>;
@@ -103,6 +110,14 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: Date,
       select: false,
     },
+    emailVerificationToken: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -113,6 +128,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         delete ret.passwordResetToken;
         delete ret.passwordResetExpires;
         delete ret.passwordChangedAt;
+        delete ret.emailVerificationToken;
+        delete ret.emailVerificationExpires;
         delete ret.__v;
         return ret;
       },
@@ -147,6 +164,18 @@ userSchema.method('createPasswordResetToken', function createPasswordResetToken(
 userSchema.method('clearPasswordReset', function clearPasswordReset() {
   this.passwordResetToken = undefined;
   this.passwordResetExpires = undefined;
+});
+
+userSchema.method('createEmailVerificationToken', function createEmailVerificationToken() {
+  const raw = crypto.randomBytes(32).toString('hex');
+  this.emailVerificationToken = crypto.createHash('sha256').update(raw).digest('hex');
+  this.emailVerificationExpires = new Date(Date.now() + EMAIL_VERIFY_TTL_MS);
+  return raw;
+});
+
+userSchema.method('clearEmailVerification', function clearEmailVerification() {
+  this.emailVerificationToken = undefined;
+  this.emailVerificationExpires = undefined;
 });
 
 export const User = model<IUser, UserModel>('User', userSchema);
