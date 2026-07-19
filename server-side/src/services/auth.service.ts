@@ -5,7 +5,7 @@ import { emailService } from '@/services/email.service';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 import { env } from '@/config/env';
-import type { UserDocument } from '@/models/user.model';
+import { PASSWORD_HISTORY_LIMIT, type UserDocument } from '@/models/user.model';
 import type { RegisterInput, LoginInput } from '@/validators/auth.validator';
 
 export interface AuthResult {
@@ -141,6 +141,15 @@ export const authService = {
     // same error for invalid, expired and already-used
     if (!user) throw AppError.badRequest('This reset link is invalid or has expired');
 
+    if (await user.isPasswordReused(password)) {
+      throw AppError.badRequest('New password must differ from your recent passwords');
+    }
+
+    // Retire the current hash into history before it's overwritten.
+    user.passwordHistory = [user.password, ...(user.passwordHistory ?? [])].slice(
+      0,
+      PASSWORD_HISTORY_LIMIT,
+    );
     user.password = password;
     user.clearPasswordReset();
     await user.save();

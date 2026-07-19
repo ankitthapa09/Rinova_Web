@@ -7,6 +7,18 @@ import { z } from 'zod';
  * checks — the server is the one that actually enforces them.
  */
 
+/** The one password rule, used everywhere a password is set. Length bounds
+ *  plus one of each character class; the 72 cap exists because bcrypt only
+ *  hashes the first 72 bytes and would silently truncate longer input. */
+export const passwordRule = z
+  .string({ error: 'Password is required' })
+  .min(8, 'Password must be at least 8 characters')
+  .max(72, 'Password must be at most 72 characters')
+  .regex(/[a-z]/, 'Add a lowercase letter')
+  .regex(/[A-Z]/, 'Add an uppercase letter')
+  .regex(/\d/, 'Add a number')
+  .regex(/[^a-zA-Z0-9]/, 'Add a symbol (e.g. ! @ # $)');
+
 export const registerSchema = z.object({
   name: z
     .string({ error: 'Name is required' })
@@ -23,11 +35,7 @@ export const registerSchema = z.object({
     .trim()
     .min(3, 'Address must be at least 3 characters')
     .max(120, 'Address must be at most 120 characters'),
-  password: z
-    .string({ error: 'Password is required' })
-    .min(8, 'Password must be at least 8 characters')
-    // bcrypt only hashes the first 72 bytes — longer input would be silently truncated
-    .max(72, 'Password must be at most 72 characters'),
+  password: passwordRule,
 });
 
 export const loginSchema = z.object({
@@ -44,10 +52,7 @@ export const resetPasswordSchema = z.object({
   token: z
     .string({ error: 'Reset token is missing' })
     .regex(/^[a-f0-9]{64}$/, 'This reset link is not valid'),
-  password: z
-    .string({ error: 'Password is required' })
-    .min(8, 'Password must be at least 8 characters')
-    .max(72, 'Password must be at most 72 characters'),
+  password: passwordRule,
 });
 
 export const verifyEmailSchema = z.object({

@@ -39,13 +39,14 @@ export const userRepository = {
       .exec();
   },
 
-  /** Matches the hash of an emailed token, only while unexpired. */
+  /** Matches the hash of an emailed token, only while unexpired. Includes the
+   *  current hash and history so the reuse check can run. */
   findByValidResetTokenHash(tokenHash: string): Promise<UserDocument | null> {
     return User.findOne({
       passwordResetToken: tokenHash,
       passwordResetExpires: { $gt: new Date() },
     })
-      .select('+passwordResetToken +passwordResetExpires')
+      .select('+passwordResetToken +passwordResetExpires +password +passwordHistory')
       .exec();
   },
 

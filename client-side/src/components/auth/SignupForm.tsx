@@ -7,22 +7,10 @@ import { authApi, ApiError } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
+import PasswordStrength, { passwordMeetsRules } from "./PasswordStrength";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^9[78]\d{8}$/;
-
-const STRENGTH_LABELS = ["", "Weak", "Fair", "Good", "Strong"];
-
-/** 0–4: length, upper+lower mix, digit, symbol */
-function passwordScore(pw: string): number {
-  if (!pw) return 0;
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
-  if (/\d/.test(pw)) score++;
-  if (/[^a-zA-Z0-9]/.test(pw)) score++;
-  return score;
-}
 
 interface Fields {
   name: string;
@@ -48,8 +36,6 @@ export default function SignupForm() {
   const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms", string>>>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
 
-  const score = passwordScore(fields.password);
-
   const set = (key: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setFields((f) => ({ ...f, [key]: e.target.value }));
 
@@ -71,7 +57,8 @@ export default function SignupForm() {
     if (!EMAIL_RE.test(fields.email)) next.email = "Enter a valid email address.";
     if (!PHONE_RE.test(fields.phone)) next.phone = "Enter a valid 10-digit mobile (98XXXXXXXX).";
     if (fields.address.trim().length < 3) next.address = "Enter your address.";
-    if (fields.password.length < 8) next.password = "Use at least 8 characters.";
+    if (!passwordMeetsRules(fields.password))
+      next.password = "Password doesn't meet all the requirements yet.";
     if (fields.confirm !== fields.password || !fields.confirm)
       next.confirm = "Passwords don't match.";
     if (!terms) next.terms = "Please accept the terms to continue.";
@@ -152,22 +139,7 @@ export default function SignupForm() {
           onChange={set("password")}
           error={errors.password}
         />
-        {/* Strength meter: four segments fill as the password hardens */}
-        <div data-auth-item className="mt-3 flex items-center gap-3" aria-hidden={!fields.password}>
-          <div className="flex flex-1 gap-1.5">
-            {[1, 2, 3, 4].map((step) => (
-              <span
-                key={step}
-                className={`h-[3px] flex-1 rounded-full transition-all duration-500 ease-expo ${
-                  fields.password && score >= step ? "bg-accent" : "bg-cream/10"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="w-12 text-right text-[10px] uppercase tracking-[0.15em] text-fog">
-            {fields.password ? STRENGTH_LABELS[score] : ""}
-          </span>
-        </div>
+        <PasswordStrength password={fields.password} />
       </div>
 
       <FloatingInput

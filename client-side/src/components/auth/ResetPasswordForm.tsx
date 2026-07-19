@@ -7,6 +7,7 @@ import { authApi, ApiError } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
+import PasswordStrength, { passwordMeetsRules } from "./PasswordStrength";
 
 export default function ResetPasswordForm({ token }: { token: string }) {
   const router = useRouter();
@@ -30,7 +31,8 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     if (status !== "idle") return;
 
     const next: typeof errors = {};
-    if (password.length < 8) next.password = "At least 8 characters.";
+    if (!passwordMeetsRules(password))
+      next.password = "Password doesn't meet all the requirements yet.";
     if (confirm !== password) next.confirm = "Passwords don't match.";
     setErrors(next);
     if (Object.keys(next).length > 0) {
@@ -60,15 +62,18 @@ export default function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-7">
-      <FloatingInput
-        id="password"
-        label="New password"
-        type="password"
-        autoComplete="new-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        error={errors.password}
-      />
+      <div>
+        <FloatingInput
+          id="password"
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={errors.password}
+        />
+        <PasswordStrength password={password} />
+      </div>
       <FloatingInput
         id="confirm"
         label="Confirm new password"

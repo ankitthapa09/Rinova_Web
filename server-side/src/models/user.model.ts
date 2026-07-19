@@ -10,6 +10,8 @@ export type UserRole = 'user' | 'admin';
 export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 /** Verification is lower stakes than reset, so the link can live longer. */
 export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+/** How many previous passwords a new one may not repeat. */
+export const PASSWORD_HISTORY_LIMIT = 5;
 
 export interface IUser {
   name: string;
@@ -30,12 +32,17 @@ export interface IUser {
   /** Same hashed-token pattern as the reset pair. */
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
+  /** Last few bcrypt hashes, newest first — blocks password reuse on reset. */
+  passwordHistory?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface IUserMethods {
   comparePassword(candidate: string): Promise<boolean>;
+  /** True if the candidate matches the current password or a recent one.
+   *  Requires +password and +passwordHistory to be selected. */
+  isPasswordReused(candidate: string): Promise<boolean>;
   /** Mints a reset token, stores only its hash, and returns the raw token for
    *  the email. The raw value exists in memory and the inbox — nowhere else. */
   createPasswordResetToken(): string;
@@ -118,6 +125,11 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: Date,
       select: false,
     },
+    passwordHistory: {
+      type: [String],
+      select: false,
+      default: undefined,
+    },
   },
   {
     timestamps: true,
@@ -130,6 +142,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         delete ret.passwordChangedAt;
         delete ret.emailVerificationToken;
         delete ret.emailVerificationExpires;
+        delete ret.passwordHistory;
         delete ret.__v;
         return ret;
       },
@@ -151,6 +164,14 @@ userSchema.pre('save', async function hashPassword() {
 
 userSchema.method('comparePassword', function comparePassword(candidate: string) {
   return bcrypt.compare(candidate, this.password);
+});
+
+userSchema.method('isPasswordReused', async function isPasswordReused(candidate: string) {
+  const hashes = [this.password, ...(this.passwordHistory ?? [])].filter(Boolean);
+  for (const hash of hashes) {
+    if (await bcrypt.compare(candidate, hash)) return true;
+  }
+  return false;
 });
 
 userSchema.method('createPasswordResetToken', function createPasswordResetToken() {
