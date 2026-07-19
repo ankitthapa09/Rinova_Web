@@ -8,6 +8,7 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from '@/validators/auth.validator';
 
 const router = Router();
@@ -29,6 +30,11 @@ router.post(
   validate(resetPasswordSchema),
   authController.resetPassword,
 );
+
+// Email verification: redeeming is public (clicked from an inbox, maybe not
+// signed in); resending needs a session and shares the reset limiter.
+router.post('/verify-email', resetLimiter, validate(verifyEmailSchema), authController.verifyEmail);
+router.post('/resend-verification', resetLimiter, requireAuth, authController.resendVerification);
 
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);

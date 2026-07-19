@@ -50,6 +50,12 @@ export const resetPasswordSchema = z.object({
     .max(72, 'Password must be at most 72 characters'),
 });
 
+export const verifyEmailSchema = z.object({
+  token: z
+    .string({ error: 'Verification token is missing' })
+    .regex(/^[a-f0-9]{64}$/, 'This verification link is not valid'),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

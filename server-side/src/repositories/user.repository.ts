@@ -30,6 +30,15 @@ export const userRepository = {
     return User.findOne({ email }).select('+passwordResetToken +passwordResetExpires').exec();
   },
 
+  findByValidVerificationTokenHash(tokenHash: string): Promise<UserDocument | null> {
+    return User.findOne({
+      emailVerificationToken: tokenHash,
+      emailVerificationExpires: { $gt: new Date() },
+    })
+      .select('+emailVerificationToken +emailVerificationExpires')
+      .exec();
+  },
+
   /** Matches the hash of an emailed token, only while unexpired. */
   findByValidResetTokenHash(tokenHash: string): Promise<UserDocument | null> {
     return User.findOne({

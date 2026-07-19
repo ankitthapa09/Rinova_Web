@@ -158,4 +158,21 @@ export const authApi = {
     });
     return message;
   },
+
+  /** Confirms an email with the token from the verification link. */
+  async verifyEmail(token: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+    return message;
+  },
+
+  /** Fresh verification link for the signed-in user. */
+  async resendVerification(): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/resend-verification", {
+      method: "POST",
+    });
+    return message;
+  },
 };

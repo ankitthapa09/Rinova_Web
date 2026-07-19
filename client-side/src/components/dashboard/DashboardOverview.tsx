@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { CarFront, Droplets, ArrowRight, BadgeCheck, CircleDashed } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
+import { authApi, ApiError } from "@/lib/api";
 import { bookingApi, type Booking } from "@/lib/bookingApi";
 import { washApi, type WashOrder } from "@/lib/washApi";
+import { toast } from "@/components/ui/toast";
 import { useDashboardUser } from "@/components/dashboard/DashboardShell";
 import RentalsList from "@/components/dashboard/RentalsList";
 import WashesList from "@/components/dashboard/WashesList";
@@ -61,6 +63,19 @@ export default function DashboardOverview() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [washes, setWashes] = useState<WashOrder[] | null>(null);
+  const [resending, setResending] = useState(false);
+
+  const resendVerification = async () => {
+    if (resending) return;
+    setResending(true);
+    try {
+      toast.success(await authApi.resendVerification());
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't send the email. Try again.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const reload = useCallback(async () => {
     // Two independent lists — one failing shouldn't blank the other.
@@ -162,9 +177,15 @@ export default function DashboardOverview() {
                 <BadgeCheck className="h-3.5 w-3.5" /> Verified
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-fog">
-                <CircleDashed className="h-3.5 w-3.5" /> Unverified
-              </span>
+              <button
+                onClick={resendVerification}
+                disabled={resending}
+                title="Send the verification email again"
+                className="inline-flex items-center gap-1.5 text-[11px] text-fog transition-colors hover:text-accent disabled:opacity-50"
+              >
+                <CircleDashed className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} />
+                {resending ? "Sending…" : "Unverified — resend email"}
+              </button>
             )}
           </div>
           <dl className="mt-5 space-y-4 text-sm">

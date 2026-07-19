@@ -83,6 +83,23 @@ export const authController = {
     });
   }),
 
+  verifyEmail: catchAsync(async (req: Request, res: Response) => {
+    await authService.verifyEmail(req.body.token);
+    res.status(200).json({
+      success: true,
+      data: { message: 'Email verified — thanks for confirming.' },
+    });
+  }),
+
+  // Requires requireAuth before it in the chain.
+  resendVerification: catchAsync(async (req: Request, res: Response) => {
+    await authService.resendVerification(req.user!.sub);
+    res.status(200).json({
+      success: true,
+      data: { message: 'Verification email sent — check your inbox.' },
+    });
+  }),
+
   // Requires requireAuth before it in the chain.
   me: catchAsync(async (req: Request, res: Response) => {
     const user = await userRepository.findById(req.user!.sub);

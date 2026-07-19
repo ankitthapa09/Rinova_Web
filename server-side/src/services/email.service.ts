@@ -88,4 +88,39 @@ export const emailService = {
         </div>`,
     });
   },
+
+  /** The welcome/verification email sent on signup and on resend. */
+  verifyEmail(to: string, name: string, verifyUrl: string): Promise<void> {
+    const firstName = name.split(' ')[0];
+    return emailService.send({
+      to,
+      subject: 'Verify your Rinova email',
+      text: [
+        `Hi ${firstName},`,
+        '',
+        'Welcome to Rinova. Confirm this email address by opening the link below',
+        'within 24 hours:',
+        '',
+        verifyUrl,
+        '',
+        "If you didn't create a Rinova account, you can ignore this email.",
+      ].join('\n'),
+      html: `
+        <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0B0B0D;color:#F4F1EA;border-radius:12px">
+          <p style="font-size:22px;font-family:Georgia,serif;margin:0 0 20px">RINOVA</p>
+          <p style="margin:0 0 12px">Hi ${firstName},</p>
+          <p style="margin:0 0 20px;color:#8F8A7E">
+            Welcome to Rinova. Confirm this email address — the link works for the next
+            <strong style="color:#F4F1EA">24 hours</strong>.
+          </p>
+          <a href="${verifyUrl}"
+             style="display:inline-block;background:#FF5C1A;color:#0B0B0D;text-decoration:none;font-weight:bold;padding:12px 28px;border-radius:999px;margin:0 0 20px">
+            Verify email
+          </a>
+          <p style="margin:0;color:#8F8A7E;font-size:13px">
+            If you didn't create a Rinova account, you can ignore this email.
+          </p>
+        </div>`,
+    });
+  },
 };

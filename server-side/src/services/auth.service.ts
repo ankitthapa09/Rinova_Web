@@ -22,6 +22,19 @@ export const authService = {
     const user = await userRepository.create(input);
     logger.info('user registered', { userId: user.id });
 
+    // Send the verification link, but never let mail trouble block a signup.
+    try {
+      const rawToken = user.createEmailVerificationToken();
+      await user.save({ validateBeforeSave: false });
+      await emailService.verifyEmail(
+        user.email,
+        user.name,
+        `${env.CLIENT_URL}/verify-email/${rawToken}`,
+      );
+    } catch (err) {
+      logger.error('verification email failed', { userId: user.id, err });
+    }
+
     return {
       user,
       tokens: tokenService.signTokenPair({ sub: user.id, role: user.role }),
@@ -89,6 +102,35 @@ export const authService = {
       await user.save({ validateBeforeSave: false });
       logger.error('password reset email failed', { userId: user.id, err });
     }
+  },
+
+  /** Flips isEmailVerified using the emailed token. Single-use. */
+  async verifyEmail(rawToken: string): Promise<void> {
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    const user = await userRepository.findByValidVerificationTokenHash(tokenHash);
+    if (!user) throw AppError.badRequest('This verification link is invalid or has expired');
+
+    user.isEmailVerified = true;
+    user.clearEmailVerification();
+    await user.save({ validateBeforeSave: false });
+    logger.info('email verified', { userId: user.id });
+  },
+
+  /** Fresh link for a signed-in user who never got (or lost) the first one. */
+  async resendVerification(userId: string): Promise<void> {
+    const user = await userRepository.findById(userId);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+    if (user.isEmailVerified) throw AppError.conflict('This email is already verified');
+
+    const rawToken = user.createEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+    await emailService.verifyEmail(
+      user.email,
+      user.name,
+      `${env.CLIENT_URL}/verify-email/${rawToken}`,
+    );
+    logger.info('verification email resent', { userId: user.id });
   },
 
   /** Step 2 — set the new password with the emailed token. Single-use. */
