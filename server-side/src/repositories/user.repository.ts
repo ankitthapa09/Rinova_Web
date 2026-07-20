@@ -13,9 +13,36 @@ export const userRepository = {
     return User.findOne({ email }).exec();
   },
 
-  // Login path only - includes the password hash for comparison.
+  // Login path only - includes the password hash and lockout state.
   findByEmailWithPassword(email: string): Promise<UserDocument | null> {
-    return User.findOne({ email }).select('+password').exec();
+    return User.findOne({ email }).select('+password +failedLoginAttempts +lockUntil').exec();
+  },
+
+  /** Atomically counts one failed login and returns the new total — $inc keeps
+   *  parallel wrong guesses from losing updates. */
+  async recordFailedLogin(id: string): Promise<number> {
+    const user = await User.findByIdAndUpdate(
+      id,
+      { $inc: { failedLoginAttempts: 1 } },
+      { new: true },
+    )
+      .select('+failedLoginAttempts')
+      .exec();
+    return user?.failedLoginAttempts ?? 0;
+  },
+
+  async lockAccount(id: string, until: Date): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      { $set: { lockUntil: until, failedLoginAttempts: 0 } },
+    ).exec();
+  },
+
+  async clearLoginFailures(id: string): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      { $unset: { failedLoginAttempts: 1, lockUntil: 1 } },
+    ).exec();
   },
 
   findById(id: string): Promise<UserDocument | null> {

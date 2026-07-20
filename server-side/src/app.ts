@@ -11,6 +11,10 @@ import routes from '@/routes';
 // and tests can import this app without opening a port.
 const app = express();
 
+// Behind a reverse proxy the client IP arrives in X-Forwarded-For; without
+// this, every visitor shares the proxy's IP and per-IP rate limits collapse.
+if (env.TRUST_PROXY > 0) app.set('trust proxy', env.TRUST_PROXY);
+
 app.use(helmet());
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 

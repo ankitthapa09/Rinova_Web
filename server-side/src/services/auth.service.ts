@@ -5,7 +5,12 @@ import { emailService } from '@/services/email.service';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 import { env } from '@/config/env';
-import { PASSWORD_HISTORY_LIMIT, type UserDocument } from '@/models/user.model';
+import {
+  ACCOUNT_LOCK_MS,
+  MAX_LOGIN_ATTEMPTS,
+  PASSWORD_HISTORY_LIMIT,
+  type UserDocument,
+} from '@/models/user.model';
 import type { RegisterInput, LoginInput } from '@/validators/auth.validator';
 
 export interface AuthResult {
@@ -44,11 +49,33 @@ export const authService = {
   async login(input: LoginInput): Promise<AuthResult> {
     const user = await userRepository.findByEmailWithPassword(input.email);
 
+    // Locked accounts refuse even the right password — checked first so a
+    // brute-forcer can't confirm a hit during the lock window.
+    if (user?.lockUntil && user.lockUntil.getTime() > Date.now()) {
+      const minutes = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60_000);
+      logger.warn('login attempt on locked account', { userId: user.id });
+      throw AppError.tooMany(
+        `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}`,
+      );
+    }
+
     // Same error whether the email or the password is wrong — a different
     // message would let an attacker probe which emails are registered.
     if (!user || !(await user.comparePassword(input.password))) {
+      if (user) {
+        const failures = await userRepository.recordFailedLogin(user.id);
+        if (failures >= MAX_LOGIN_ATTEMPTS) {
+          await userRepository.lockAccount(user.id, new Date(Date.now() + ACCOUNT_LOCK_MS));
+          logger.warn('account locked after repeated failures', { userId: user.id });
+        }
+      }
       logger.warn('failed login attempt', { email: input.email });
       throw AppError.unauthorized('Invalid email or password');
+    }
+
+    // A good login wipes the slate.
+    if (user.failedLoginAttempts || user.lockUntil) {
+      await userRepository.clearLoginFailures(user.id);
     }
 
     await userRepository.recordLogin(user.id);

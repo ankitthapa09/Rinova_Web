@@ -47,6 +47,10 @@ const envSchema = z.object({
   EMAIL_FROM: z.string().default('Rinova <no-reply@rinova.com.np>'),
 
   // Rate limiting
+  /** Hops of reverse proxy in front of the app (0 = none). Only set this when
+   *  a proxy really exists — trusting X-Forwarded-For without one lets clients
+   *  spoof their IP and dodge per-IP rate limits. */
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(5),

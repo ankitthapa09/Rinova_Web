@@ -12,6 +12,9 @@ export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 /** How many previous passwords a new one may not repeat. */
 export const PASSWORD_HISTORY_LIMIT = 5;
+/** Failed logins before the account locks, and for how long. */
+export const MAX_LOGIN_ATTEMPTS = 5;
+export const ACCOUNT_LOCK_MS = 15 * 60 * 1000;
 
 export interface IUser {
   name: string;
@@ -34,6 +37,9 @@ export interface IUser {
   emailVerificationExpires?: Date;
   /** Last few bcrypt hashes, newest first — blocks password reuse on reset. */
   passwordHistory?: string[];
+  /** Per-account brute-force lockout state. */
+  failedLoginAttempts?: number;
+  lockUntil?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -130,6 +136,14 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       select: false,
       default: undefined,
     },
+    failedLoginAttempts: {
+      type: Number,
+      select: false,
+    },
+    lockUntil: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -143,6 +157,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         delete ret.emailVerificationToken;
         delete ret.emailVerificationExpires;
         delete ret.passwordHistory;
+        delete ret.failedLoginAttempts;
+        delete ret.lockUntil;
         delete ret.__v;
         return ret;
       },

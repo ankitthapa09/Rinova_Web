@@ -36,7 +36,9 @@ router.post(
 router.post('/verify-email', resetLimiter, validate(verifyEmailSchema), authController.verifyEmail);
 router.post('/resend-verification', resetLimiter, requireAuth, authController.resendVerification);
 
-router.post('/refresh', authController.refresh);
+// Failed refreshes count like failed logins — a stolen-cookie brute force
+// shouldn't get unlimited tries.
+router.post('/refresh', authLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
 
