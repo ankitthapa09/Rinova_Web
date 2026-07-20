@@ -18,8 +18,23 @@ export interface AuthResult {
   tokens: TokenPair;
 }
 
+export interface AuthContext {
+  userAgent?: string;
+}
+
+/** Turns a freshly-signed refresh token into the record we persist. */
+function sessionRecord(refreshToken: string, family: string, context?: AuthContext) {
+  return {
+    family,
+    tokenHash: tokenService.hashRefreshToken(refreshToken),
+    expiresAt: tokenService.getRefreshExpiry(refreshToken),
+    userAgent: context?.userAgent,
+    createdAt: new Date(),
+  };
+}
+
 export const authService = {
-  async register(input: RegisterInput): Promise<AuthResult> {
+  async register(input: RegisterInput, context?: AuthContext): Promise<AuthResult> {
     if (await userRepository.existsByEmail(input.email)) {
       throw AppError.conflict('An account with this email already exists');
     }
@@ -40,17 +55,16 @@ export const authService = {
       logger.error('verification email failed', { userId: user.id, err });
     }
 
-    return {
-      user,
-      tokens: tokenService.signTokenPair({ sub: user.id, role: user.role }),
-    };
+    const family = crypto.randomUUID();
+    const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
+    await userRepository.addSession(user.id, sessionRecord(tokens.refreshToken, family, context));
+    return { user, tokens };
   },
 
-  async login(input: LoginInput): Promise<AuthResult> {
+  async login(input: LoginInput, context?: AuthContext): Promise<AuthResult> {
     const user = await userRepository.findByEmailWithPassword(input.email);
 
-    // Locked accounts refuse even the right password — checked first so a
-    // brute-forcer can't confirm a hit during the lock window.
+    // checked first, so a locked account never confirms the right password
     if (user?.lockUntil && user.lockUntil.getTime() > Date.now()) {
       const minutes = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60_000);
       logger.warn('login attempt on locked account', { userId: user.id });
@@ -59,8 +73,7 @@ export const authService = {
       );
     }
 
-    // Same error whether the email or the password is wrong — a different
-    // message would let an attacker probe which emails are registered.
+    // same error whether the email or password is wrong — no enumeration
     if (!user || !(await user.comparePassword(input.password))) {
       if (user) {
         const failures = await userRepository.recordFailedLogin(user.id);
@@ -73,27 +86,28 @@ export const authService = {
       throw AppError.unauthorized('Invalid email or password');
     }
 
-    // A good login wipes the slate.
     if (user.failedLoginAttempts || user.lockUntil) {
       await userRepository.clearLoginFailures(user.id);
     }
 
     await userRepository.recordLogin(user.id);
 
-    return {
-      user,
-      tokens: tokenService.signTokenPair({ sub: user.id, role: user.role }),
-    };
+    const family = crypto.randomUUID();
+    const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
+    await userRepository.addSession(user.id, sessionRecord(tokens.refreshToken, family, context));
+    return { user, tokens };
   },
 
-  async refresh(refreshToken: string): Promise<TokenPair> {
-    const { sub, iat } = tokenService.verifyRefreshToken(refreshToken);
+  /** Rotating refresh — every use burns the old token and issues a new one in
+   *  the same family. A stale token replayed within a live family means theft:
+   *  every session is dropped. A missing family just means this one is over. */
+  async refresh(refreshToken: string, context?: AuthContext): Promise<TokenPair> {
+    const { sub, family, iat } = tokenService.verifyRefreshToken(refreshToken);
 
-    const user = await userRepository.findByIdWithPasswordChangedAt(sub);
+    const user = await userRepository.findByIdWithSessions(sub);
     if (!user) throw AppError.unauthorized('Account no longer exists');
 
-    // Refresh tokens minted before a password change are dead — this is what
-    // logs other sessions out after a reset.
+    // tokens minted before a password change are dead
     if (
       user.passwordChangedAt &&
       iat !== undefined &&
@@ -103,11 +117,38 @@ export const authService = {
       throw AppError.unauthorized('Session expired — please sign in again');
     }
 
-    return tokenService.signTokenPair({ sub: user.id, role: user.role });
+    const session = user.refreshSessions?.find((s) => s.family === family);
+    if (!session) throw AppError.unauthorized('Session expired — please sign in again');
+
+    const presentedHash = tokenService.hashRefreshToken(refreshToken);
+    if (session.tokenHash !== presentedHash) {
+      logger.warn('refresh token reuse detected — revoking all sessions', { userId: user.id });
+      await userRepository.clearAllSessions(user.id);
+      throw AppError.unauthorized('Session expired — please sign in again');
+    }
+
+    const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
+    await userRepository.rotateSession(
+      user.id,
+      family,
+      sessionRecord(tokens.refreshToken, family, context),
+    );
+    return tokens;
   },
 
-  /** Step 1 — request a reset link. Succeeds whether or not the email exists,
-   *  so nobody can probe which emails are registered. */
+  /** Drops this device's session so its refresh token dies immediately,
+   *  rather than whenever the JWT would have expired. Other devices unaffected. */
+  async logout(refreshToken?: string): Promise<void> {
+    if (!refreshToken) return;
+    try {
+      const { sub, family } = tokenService.verifyRefreshToken(refreshToken);
+      await userRepository.removeSessionByFamily(sub, family);
+    } catch {
+      // malformed/expired token, nothing to remove
+    }
+  },
+
+  /** Step 1 — request a reset link. Same response whether the email exists. */
   async forgotPassword(email: string): Promise<void> {
     const user = await userRepository.findByEmailForReset(email);
     if (!user) {
@@ -123,8 +164,7 @@ export const authService = {
       await emailService.passwordReset(user.email, user.name, resetUrl);
       logger.info('password reset email sent', { userId: user.id });
     } catch (err) {
-      // Mail failed: clear the token and log, but keep the same 200 response —
-      // erroring only for registered emails would leak which emails exist.
+      // clear the token but keep the same response — no enumeration on mail failure
       user.clearPasswordReset();
       await user.save({ validateBeforeSave: false });
       logger.error('password reset email failed', { userId: user.id, err });
@@ -165,14 +205,12 @@ export const authService = {
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 
     const user = await userRepository.findByValidResetTokenHash(tokenHash);
-    // same error for invalid, expired and already-used
     if (!user) throw AppError.badRequest('This reset link is invalid or has expired');
 
     if (await user.isPasswordReused(password)) {
       throw AppError.badRequest('New password must differ from your recent passwords');
     }
 
-    // Retire the current hash into history before it's overwritten.
     user.passwordHistory = [user.password, ...(user.passwordHistory ?? [])].slice(
       0,
       PASSWORD_HISTORY_LIMIT,

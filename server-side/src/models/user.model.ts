@@ -5,16 +5,27 @@ import { env } from '@/config/env';
 
 export type UserRole = 'user' | 'admin';
 
-/** How long a reset link stays usable. Short on purpose — the link sits in an
- *  inbox, which is the weakest part of the chain. */
+/** Reset link lifetime — short since it sits in an inbox. */
 export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
-/** Verification is lower stakes than reset, so the link can live longer. */
+/** Verification link lifetime — lower stakes, so it can live longer. */
 export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 /** How many previous passwords a new one may not repeat. */
 export const PASSWORD_HISTORY_LIMIT = 5;
 /** Failed logins before the account locks, and for how long. */
 export const MAX_LOGIN_ATTEMPTS = 5;
 export const ACCOUNT_LOCK_MS = 15 * 60 * 1000;
+/** Max sessions kept per user; oldest is evicted past this. */
+export const MAX_SESSIONS = 10;
+
+/** One active refresh token. Only its hash is stored, never the token itself. */
+export interface RefreshSession {
+  /** Rotation chain id — constant across rotations, new per login. */
+  family: string;
+  tokenHash: string;
+  expiresAt: Date;
+  userAgent?: string;
+  createdAt: Date;
+}
 
 export interface IUser {
   name: string;
@@ -25,32 +36,28 @@ export interface IUser {
   role: UserRole;
   isEmailVerified: boolean;
   lastLoginAt?: Date;
-  /** SHA-256 of the reset token — never the token itself, so a database leak
-   *  can't be replayed into a password reset. */
+  /** SHA-256 of the reset token — never the token itself. */
   passwordResetToken?: string;
   passwordResetExpires?: Date;
-  /** When the password last changed. Tokens minted before this are rejected,
-   *  which logs every existing session out on a reset. */
+  /** Tokens minted before this are rejected, logging old sessions out. */
   passwordChangedAt?: Date;
-  /** Same hashed-token pattern as the reset pair. */
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
-  /** Last few bcrypt hashes, newest first — blocks password reuse on reset. */
+  /** Recent bcrypt hashes, newest first — blocks password reuse. */
   passwordHistory?: string[];
-  /** Per-account brute-force lockout state. */
   failedLoginAttempts?: number;
   lockUntil?: Date;
+  /** One session per signed-in device, rotated on every refresh. */
+  refreshSessions?: RefreshSession[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface IUserMethods {
   comparePassword(candidate: string): Promise<boolean>;
-  /** True if the candidate matches the current password or a recent one.
-   *  Requires +password and +passwordHistory to be selected. */
+  /** True if the candidate matches the current password or a recent one. */
   isPasswordReused(candidate: string): Promise<boolean>;
-  /** Mints a reset token, stores only its hash, and returns the raw token for
-   *  the email. The raw value exists in memory and the inbox — nowhere else. */
+  /** Mints a reset token, stores only its hash, returns the raw token to email. */
   createPasswordResetToken(): string;
   clearPasswordReset(): void;
   createEmailVerificationToken(): string;
@@ -144,6 +151,22 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: Date,
       select: false,
     },
+    refreshSessions: {
+      type: [
+        new Schema<RefreshSession>(
+          {
+            family: { type: String, required: true },
+            tokenHash: { type: String, required: true },
+            expiresAt: { type: Date, required: true },
+            userAgent: { type: String },
+            createdAt: { type: Date, default: Date.now },
+          },
+          { _id: false },
+        ),
+      ],
+      select: false,
+      default: undefined,
+    },
   },
   {
     timestamps: true,
@@ -159,6 +182,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         delete ret.passwordHistory;
         delete ret.failedLoginAttempts;
         delete ret.lockUntil;
+        delete ret.refreshSessions;
         delete ret.__v;
         return ret;
       },
@@ -172,9 +196,7 @@ userSchema.pre('save', async function hashPassword() {
   if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, env.BCRYPT_SALT_ROUNDS);
 
-  // Stamp the change so tokens issued earlier stop working. Backdated a second
-  // because the JWT may be signed just before this save commits, and a token
-  // minted in that gap must not look "older" than the change.
+  // Backdated a second so a token signed just before this save still counts as "before".
   if (!this.isNew) this.passwordChangedAt = new Date(Date.now() - 1000);
 });
 

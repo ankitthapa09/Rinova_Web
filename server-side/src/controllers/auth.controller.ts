@@ -29,7 +29,9 @@ const refreshCookieOptions: CookieOptions = {
 
 export const authController = {
   register: catchAsync(async (req: Request, res: Response) => {
-    const { user, tokens } = await authService.register(req.body);
+    const { user, tokens } = await authService.register(req.body, {
+      userAgent: req.get('user-agent'),
+    });
 
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
     res.status(201).json({
@@ -39,7 +41,9 @@ export const authController = {
   }),
 
   login: catchAsync(async (req: Request, res: Response) => {
-    const { user, tokens } = await authService.login(req.body);
+    const { user, tokens } = await authService.login(req.body, {
+      userAgent: req.get('user-agent'),
+    });
 
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
     res.status(200).json({
@@ -52,7 +56,7 @@ export const authController = {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
     if (!token) throw AppError.unauthorized('No refresh token provided');
 
-    const tokens = await authService.refresh(token);
+    const tokens = await authService.refresh(token, { userAgent: req.get('user-agent') });
 
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
     res.status(200).json({
@@ -61,7 +65,8 @@ export const authController = {
     });
   }),
 
-  logout: catchAsync(async (_req: Request, res: Response) => {
+  logout: catchAsync(async (req: Request, res: Response) => {
+    await authService.logout(req.cookies?.[REFRESH_COOKIE] as string | undefined);
     res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions, maxAge: undefined });
     res.status(200).json({ success: true, data: null });
   }),
