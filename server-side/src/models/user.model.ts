@@ -56,6 +56,15 @@ export interface IUser {
   lockUntil?: Date;
   /** One session per signed-in device, rotated on every refresh. */
   refreshSessions?: RefreshSession[];
+  /** Only true once a code has been verified — a scanned-but-unconfirmed
+   *  secret must never gate login, or a mis-scan locks the user out. */
+  twoFactorEnabled: boolean;
+  /** Base32 TOTP secret. Shared with the authenticator app and nothing else. */
+  twoFactorSecret?: string;
+  /** bcrypt hashes of unused recovery codes — the way back in without a phone. */
+  twoFactorRecoveryCodes?: string[];
+  /** Last accepted TOTP step, so a code can't be replayed inside its window. */
+  twoFactorLastUsedStep?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -158,6 +167,23 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: Date,
       select: false,
     },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    twoFactorSecret: {
+      type: String,
+      select: false,
+    },
+    twoFactorRecoveryCodes: {
+      type: [String],
+      select: false,
+      default: undefined,
+    },
+    twoFactorLastUsedStep: {
+      type: Number,
+      select: false,
+    },
     refreshSessions: {
       type: [
         new Schema<RefreshSession>(
@@ -192,6 +218,9 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         delete ret.failedLoginAttempts;
         delete ret.lockUntil;
         delete ret.refreshSessions;
+        delete ret.twoFactorSecret;
+        delete ret.twoFactorRecoveryCodes;
+        delete ret.twoFactorLastUsedStep;
         delete ret.__v;
         return ret;
       },
