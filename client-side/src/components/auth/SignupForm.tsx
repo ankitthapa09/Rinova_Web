@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
 import { authApi, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
@@ -35,6 +36,13 @@ export default function SignupForm() {
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms", string>>>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  // Already signed in? Skip the form rather than offering a second account.
+  const { user: session, loading: sessionLoading } = useAuth(true);
+
+  useEffect(() => {
+    if (sessionLoading || !session) return;
+    router.replace(session.role === "admin" ? "/admin" : "/dashboard");
+  }, [sessionLoading, session, router]);
 
   const set = (key: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setFields((f) => ({ ...f, [key]: e.target.value }));
@@ -79,7 +87,8 @@ export default function SignupForm() {
       });
       setStatus("success");
       toast.success(`Welcome to the garage, ${user.name.split(" ")[0]}.`);
-      window.setTimeout(() => router.push("/dashboard"), 900);
+      // replace so Back skips the signup page instead of returning to it
+      window.setTimeout(() => router.replace("/dashboard"), 900);
     } catch (err) {
       setStatus("idle");
       if (err instanceof ApiError) {

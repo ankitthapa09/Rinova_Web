@@ -56,12 +56,16 @@ export const authController = {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
     if (!token) throw AppError.unauthorized('No refresh token provided');
 
-    const tokens = await authService.refresh(token, { userAgent: req.get('user-agent') });
+    const result = await authService.refresh(token, { userAgent: req.get('user-agent') });
 
-    res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
+    // No refreshToken means this call lost a rotation race — the cookie already
+    // holds the live token, so leave it alone.
+    if (result.refreshToken) {
+      res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions);
+    }
     res.status(200).json({
       success: true,
-      data: { accessToken: tokens.accessToken },
+      data: { accessToken: result.accessToken },
     });
   }),
 

@@ -78,10 +78,31 @@ export const userRepository = {
     ).exec();
   },
 
-  /** Rotation: advance a family to its new token in one write. */
-  async rotateSession(id: string, family: string, session: RefreshSession): Promise<void> {
-    await User.updateOne({ _id: id }, { $pull: { refreshSessions: { family } } }).exec();
-    await this.addSession(id, session);
+  /**
+   * Rotation as a compare-and-swap: only advances if the family is still on
+   * `expectedHash`. Two simultaneous refreshes both match the same token, but
+   * only the first update finds it — the loser gets false and must not rotate,
+   * or the two would diverge and orphan the caller's token.
+   */
+  async rotateSession(
+    id: string,
+    family: string,
+    expectedHash: string,
+    session: RefreshSession,
+  ): Promise<boolean> {
+    const res = await User.updateOne(
+      { _id: id, refreshSessions: { $elemMatch: { family, tokenHash: expectedHash } } },
+      {
+        $set: {
+          'refreshSessions.$.tokenHash': session.tokenHash,
+          'refreshSessions.$.previousTokenHash': expectedHash,
+          'refreshSessions.$.rotatedAt': new Date(),
+          'refreshSessions.$.expiresAt': session.expiresAt,
+          'refreshSessions.$.userAgent': session.userAgent,
+        },
+      },
+    ).exec();
+    return res.matchedCount > 0;
   },
 
   /** Logout / reuse — remove one family's session. */

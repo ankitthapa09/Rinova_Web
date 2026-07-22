@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
 import { authApi, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
@@ -18,6 +19,14 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  // Already signed in (e.g. arrived here with the back button)? Don't show the
+  // form — send them where they belong. Passive: no network call for guests.
+  const { user: session, loading: sessionLoading } = useAuth(true);
+
+  useEffect(() => {
+    if (sessionLoading || !session) return;
+    router.replace(session.role === "admin" ? "/admin" : "/dashboard");
+  }, [sessionLoading, session, router]);
 
   const shake = () => {
     if (!formRef.current || !window.matchMedia(MOTION_OK).matches) return;
@@ -47,8 +56,9 @@ export default function LoginForm() {
       setStatus("success");
       toast.success(`Welcome back, ${user.name.split(" ")[0]}.`);
       // Admins land on the admin panel; everyone else on their dashboard.
+      // replace, not push — going Back should skip the login page, not return to it.
       const destination = user.role === "admin" ? "/admin" : "/dashboard";
-      window.setTimeout(() => router.push(destination), 900);
+      window.setTimeout(() => router.replace(destination), 900);
     } catch (err) {
       setStatus("idle");
       if (err instanceof ApiError) {

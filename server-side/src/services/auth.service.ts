@@ -8,6 +8,7 @@ import { env } from '@/config/env';
 import {
   ACCOUNT_LOCK_MS,
   MAX_LOGIN_ATTEMPTS,
+  ROTATION_GRACE_MS,
   PASSWORD_HISTORY_LIMIT,
   type UserDocument,
 } from '@/models/user.model';
@@ -22,11 +23,25 @@ export interface AuthContext {
   userAgent?: string;
 }
 
+/** A refresh always returns an access token; `refreshToken` is absent when the
+ *  call lost a rotation race, meaning the caller's cookie must stay as it is. */
+export interface RefreshResult {
+  accessToken: string;
+  refreshToken?: string;
+}
+
 /** Turns a freshly-signed refresh token into the record we persist. */
-function sessionRecord(refreshToken: string, family: string, context?: AuthContext) {
+function sessionRecord(
+  refreshToken: string,
+  family: string,
+  context?: AuthContext,
+  previousTokenHash?: string,
+) {
   return {
     family,
     tokenHash: tokenService.hashRefreshToken(refreshToken),
+    previousTokenHash,
+    rotatedAt: previousTokenHash ? new Date() : undefined,
     expiresAt: tokenService.getRefreshExpiry(refreshToken),
     userAgent: context?.userAgent,
     createdAt: new Date(),
@@ -101,7 +116,7 @@ export const authService = {
   /** Rotating refresh — every use burns the old token and issues a new one in
    *  the same family. A stale token replayed within a live family means theft:
    *  every session is dropped. A missing family just means this one is over. */
-  async refresh(refreshToken: string, context?: AuthContext): Promise<TokenPair> {
+  async refresh(refreshToken: string, context?: AuthContext): Promise<RefreshResult> {
     const { sub, family, iat } = tokenService.verifyRefreshToken(refreshToken);
 
     const user = await userRepository.findByIdWithSessions(sub);
@@ -121,18 +136,42 @@ export const authService = {
     if (!session) throw AppError.unauthorized('Session expired — please sign in again');
 
     const presentedHash = tokenService.hashRefreshToken(refreshToken);
+    const accessToken = tokenService.signAccessToken({ sub: user.id, role: user.role });
+
+    // Was this token already replaced? Only benign if it's the one we swapped
+    // out moments ago — two tabs refreshing together. Anything older is a replay.
     if (session.tokenHash !== presentedHash) {
-      logger.warn('refresh token reuse detected — revoking all sessions', { userId: user.id });
-      await userRepository.clearAllSessions(user.id);
-      throw AppError.unauthorized('Session expired — please sign in again');
+      const inGrace =
+        session.previousTokenHash === presentedHash &&
+        session.rotatedAt !== undefined &&
+        Date.now() - session.rotatedAt.getTime() < ROTATION_GRACE_MS;
+
+      if (!inGrace) {
+        logger.warn('refresh token reuse detected — revoking all sessions', { userId: user.id });
+        await userRepository.clearAllSessions(user.id);
+        throw AppError.unauthorized('Session expired — please sign in again');
+      }
+      // Don't rotate: the winner's token is the live one, and re-issuing here
+      // would orphan it. Fresh access token only, cookie left untouched.
+      logger.info('refresh race tolerated within grace window', { userId: user.id });
+      return { accessToken };
     }
 
     const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
-    await userRepository.rotateSession(
+    const rotated = await userRepository.rotateSession(
       user.id,
       family,
-      sessionRecord(tokens.refreshToken, family, context),
+      presentedHash,
+      sessionRecord(tokens.refreshToken, family, context, presentedHash),
     );
+
+    // Lost the swap — another request rotated between our read and write.
+    // Same reasoning as above: keep their token, hand back access only.
+    if (!rotated) {
+      logger.info('refresh race lost the swap', { userId: user.id });
+      return { accessToken };
+    }
+
     return tokens;
   },
 

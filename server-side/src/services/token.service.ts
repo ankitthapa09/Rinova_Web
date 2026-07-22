@@ -39,6 +39,14 @@ export const tokenService = {
     };
   },
 
+  /** Access token alone — for a refresh that loses a rotation race and so must
+   *  not mint a new refresh token. */
+  signAccessToken(payload: AccessTokenPayload): string {
+    return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+      expiresIn: env.JWT_ACCESS_EXPIRES_IN as SignOptions['expiresIn'],
+    });
+  },
+
   /** What we store — the raw token never touches the database. */
   hashRefreshToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');

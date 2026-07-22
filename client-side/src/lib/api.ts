@@ -28,6 +28,8 @@ export class ApiError extends Error {
 // Access token lives in memory only — nothing readable in localStorage for
 // XSS to lift. The refresh token is an httpOnly cookie the browser manages.
 let accessToken: string | null = null;
+// Shared promise while a refresh is in flight — see authApi.refresh().
+let refreshInFlight: Promise<void> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
@@ -125,16 +127,32 @@ export const authApi = {
     setSessionHint(false);
   },
 
-  /** Restores a session from the refresh cookie (e.g. after a page reload). */
-  async refresh(): Promise<void> {
-    try {
-      const data = await request<{ accessToken: string }>("/auth/refresh", { method: "POST" });
-      accessToken = data.accessToken;
-      setSessionHint(true);
-    } catch (err) {
-      setSessionHint(false);
-      throw err;
-    }
+  /**
+   * Restores a session from the refresh cookie (e.g. after a page reload).
+   *
+   * Single-flight: parallel callers share one request. Refresh tokens rotate,
+   * so a second simultaneous call would present a token the first already
+   * replaced — indistinguishable from a stolen token being replayed, which
+   * revokes every session. React's dev StrictMode double-invokes effects, so
+   * this is the normal case, not an edge case.
+   */
+  refresh(): Promise<void> {
+    if (refreshInFlight) return refreshInFlight;
+
+    refreshInFlight = (async () => {
+      try {
+        const data = await request<{ accessToken: string }>("/auth/refresh", { method: "POST" });
+        accessToken = data.accessToken;
+        setSessionHint(true);
+      } catch (err) {
+        setSessionHint(false);
+        throw err;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+
+    return refreshInFlight;
   },
 
   me(): Promise<{ user: ApiUser }> {

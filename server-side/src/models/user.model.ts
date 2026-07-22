@@ -16,12 +16,19 @@ export const MAX_LOGIN_ATTEMPTS = 5;
 export const ACCOUNT_LOCK_MS = 15 * 60 * 1000;
 /** Max sessions kept per user; oldest is evicted past this. */
 export const MAX_SESSIONS = 10;
+/** How long the just-replaced token stays acceptable after a rotation. Two tabs
+ *  reloading together send the same token at the same moment; without this the
+ *  slower one looks like a replay and would revoke every session. */
+export const ROTATION_GRACE_MS = 20 * 1000;
 
 /** One active refresh token. Only its hash is stored, never the token itself. */
 export interface RefreshSession {
   /** Rotation chain id — constant across rotations, new per login. */
   family: string;
   tokenHash: string;
+  /** The hash this one replaced, honoured briefly (see ROTATION_GRACE_MS). */
+  previousTokenHash?: string;
+  rotatedAt?: Date;
   expiresAt: Date;
   userAgent?: string;
   createdAt: Date;
@@ -157,6 +164,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
           {
             family: { type: String, required: true },
             tokenHash: { type: String, required: true },
+            previousTokenHash: { type: String },
+            rotatedAt: { type: Date },
             expiresAt: { type: Date, required: true },
             userAgent: { type: String },
             createdAt: { type: Date, default: Date.now },
