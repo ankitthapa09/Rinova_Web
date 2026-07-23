@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
-import { authApi, ApiError } from "@/lib/api";
+import { authApi, ApiError, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 import FloatingInput from "./FloatingInput";
@@ -17,7 +17,10 @@ export default function LoginForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  // Set once the server asks for a second factor — flips the form to code entry.
+  const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string; code?: string }>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
   // Already signed in (e.g. arrived here with the back button)? Don't show the
   // form — send them where they belong. Passive: no network call for guests.
@@ -37,10 +40,53 @@ export default function LoginForm() {
     );
   };
 
+  // Shared success landing for both the one-step and two-step flows.
+  const finishSignIn = (user: ApiUser) => {
+    setStatus("success");
+    toast.success(`Welcome back, ${user.name.split(" ")[0]}.`);
+    // replace, not push — going Back should skip the login page, not return to it.
+    const destination = user.role === "admin" ? "/admin" : "/dashboard";
+    window.setTimeout(() => router.replace(destination), 900);
+  };
+
+  const onError = (err: unknown) => {
+    setStatus("idle");
+    if (err instanceof ApiError) {
+      setErrors(err.fieldErrors);
+      if (Object.keys(err.fieldErrors).length === 0) toast.error(err.message);
+    } else {
+      toast.error("Something went wrong. Please try again.");
+    }
+    shake();
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (status !== "idle") return;
 
+    // ── Step two: a 2FA code is expected ──────────────────
+    if (challengeToken) {
+      if (!code.trim()) {
+        setErrors({ code: "Enter your code." });
+        shake();
+        return;
+      }
+      setStatus("loading");
+      try {
+        finishSignIn(await authApi.twoFactorLogin(challengeToken, code.trim()));
+      } catch (err) {
+        // A dead challenge (expired/used) means starting over from credentials.
+        if (err instanceof ApiError && err.status === 401) {
+          setChallengeToken(null);
+          setCode("");
+          setPassword("");
+        }
+        onError(err);
+      }
+      return;
+    }
+
+    // ── Step one: email + password ────────────────────────
     const next: typeof errors = {};
     if (!EMAIL_RE.test(email)) next.email = "Enter a valid email address.";
     if (!password) next.password = "Enter your password.";
@@ -52,25 +98,68 @@ export default function LoginForm() {
 
     setStatus("loading");
     try {
-      const user = await authApi.login({ email, password });
-      setStatus("success");
-      toast.success(`Welcome back, ${user.name.split(" ")[0]}.`);
-      // Admins land on the admin panel; everyone else on their dashboard.
-      // replace, not push — going Back should skip the login page, not return to it.
-      const destination = user.role === "admin" ? "/admin" : "/dashboard";
-      window.setTimeout(() => router.replace(destination), 900);
-    } catch (err) {
-      setStatus("idle");
-      if (err instanceof ApiError) {
-        setErrors(err.fieldErrors);
-        if (Object.keys(err.fieldErrors).length === 0) toast.error(err.message);
-      } else {
-        toast.error("Something went wrong. Please try again.");
+      const result = await authApi.login({ email, password });
+      // 2FA on — no session yet. Move to the code step instead of redirecting.
+      if ("twoFactorRequired" in result) {
+        setStatus("idle");
+        setChallengeToken(result.challengeToken);
+        setErrors({});
+        return;
       }
-      shake();
+      finishSignIn(result.user);
+    } catch (err) {
+      onError(err);
     }
   };
 
+  // ── Second step: authenticator / recovery code ──────────
+  if (challengeToken) {
+    return (
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-7">
+        <div data-auth-item>
+          <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-accent">
+            Two-step verification
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-fog">
+            Open your authenticator app and enter the 6-digit code. No phone?
+            Use one of your saved recovery codes instead.
+          </p>
+        </div>
+
+        <FloatingInput
+          id="code"
+          label="Authentication code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          autoFocus
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          error={errors.code}
+        />
+
+        <div data-auth-item className="mt-2">
+          <MagneticSubmit status={status} successLabel="Verified">
+            Verify
+          </MagneticSubmit>
+        </div>
+
+        <button
+          type="button"
+          data-auth-item
+          onClick={() => {
+            setChallengeToken(null);
+            setCode("");
+            setErrors({});
+          }}
+          className="nav-link mx-auto text-[13px] text-fog hover:text-cream"
+        >
+          Use a different account
+        </button>
+      </form>
+    );
+  }
+
+  // ── First step: credentials ─────────────────────────────
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-7">
       <FloatingInput

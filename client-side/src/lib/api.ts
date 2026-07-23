@@ -8,6 +8,7 @@ export interface ApiUser {
   address: string;
   role: "user" | "admin";
   isEmailVerified: boolean;
+  twoFactorEnabled: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -100,6 +101,27 @@ export interface LoginInput {
 
 type AuthData = { user: ApiUser; accessToken: string };
 
+/**
+ * A normal login either signs you in, or — when 2FA is on — hands back a
+ * short-lived challenge and asks for a code. The caller branches on
+ * `twoFactorRequired`.
+ */
+export type LoginResult =
+  | { user: ApiUser }
+  | { twoFactorRequired: true; challengeToken: string };
+
+// Raw server payload for /auth/login — one of the two shapes above, but with
+// the tokens the client keeps to itself.
+type LoginData =
+  | { user: ApiUser; accessToken: string }
+  | { twoFactorRequired: true; challengeToken: string };
+
+/** What the enable step returns — the one-time recovery codes to save. */
+export interface TwoFactorSetup {
+  secret: string;
+  qrDataUrl: string;
+}
+
 export const authApi = {
   async register(input: RegisterInput): Promise<ApiUser> {
     const data = await request<AuthData>("/auth/register", {
@@ -111,10 +133,25 @@ export const authApi = {
     return data.user;
   },
 
-  async login(input: LoginInput): Promise<ApiUser> {
-    const data = await request<AuthData>("/auth/login", {
+  async login(input: LoginInput): Promise<LoginResult> {
+    const data = await request<LoginData>("/auth/login", {
       method: "POST",
       body: JSON.stringify(input),
+    });
+    // 2FA is on — no session yet. Pass the challenge back for the code step.
+    if ("twoFactorRequired" in data) {
+      return { twoFactorRequired: true, challengeToken: data.challengeToken };
+    }
+    accessToken = data.accessToken;
+    setSessionHint(true);
+    return { user: data.user };
+  },
+
+  /** Second login step: exchange the challenge + a TOTP/recovery code for a session. */
+  async twoFactorLogin(challengeToken: string, code: string): Promise<ApiUser> {
+    const data = await request<AuthData>("/auth/login/2fa", {
+      method: "POST",
+      body: JSON.stringify({ challengeToken, code }),
     });
     accessToken = data.accessToken;
     setSessionHint(true);
@@ -190,6 +227,31 @@ export const authApi = {
   async resendVerification(): Promise<string> {
     const { message } = await request<{ message: string }>("/auth/resend-verification", {
       method: "POST",
+    });
+    return message;
+  },
+
+  // ── Two-factor management (signed-in user) ────────────────
+
+  /** Begins setup: reserves a secret and returns a QR + manual key to scan. */
+  startTwoFactorSetup(): Promise<TwoFactorSetup> {
+    return request<TwoFactorSetup>("/auth/2fa/setup", { method: "POST" });
+  },
+
+  /** Confirms a scanned code and flips 2FA on — returns the one-time recovery codes. */
+  async confirmTwoFactorSetup(code: string): Promise<string[]> {
+    const { recoveryCodes } = await request<{ recoveryCodes: string[] }>("/auth/2fa/enable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    return recoveryCodes;
+  },
+
+  /** Turns 2FA off — needs a fresh code to prove it's really the account owner. */
+  async disableTwoFactor(code: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
     });
     return message;
   },
