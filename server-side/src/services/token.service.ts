@@ -59,6 +59,22 @@ export const tokenService = {
       : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   },
 
+  /** Short-lived proof that a password was correct, awaiting the 2FA code. The
+   *  `twofa` claim keeps it from being used as an ordinary access token. */
+  sign2faChallenge(userId: string): string {
+    return jwt.sign({ sub: userId, twofa: true }, env.JWT_ACCESS_SECRET, { expiresIn: '5m' });
+  },
+
+  verify2faChallenge(token: string): { sub: string } {
+    try {
+      const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as { sub: string; twofa?: boolean };
+      if (!payload.twofa) throw new Error('not a 2fa challenge');
+      return { sub: payload.sub };
+    } catch {
+      throw AppError.unauthorized('Your verification session expired — sign in again');
+    }
+  },
+
   verifyAccessToken(token: string): AccessTokenPayload {
     try {
       return jwt.verify(token, env.JWT_ACCESS_SECRET) as AccessTokenPayload;

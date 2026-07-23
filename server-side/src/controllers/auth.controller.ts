@@ -41,9 +41,30 @@ export const authController = {
   }),
 
   login: catchAsync(async (req: Request, res: Response) => {
-    const { user, tokens } = await authService.login(req.body, {
-      userAgent: req.get('user-agent'),
+    const outcome = await authService.login(req.body, { userAgent: req.get('user-agent') });
+
+    // 2FA on: no session yet — return the challenge and let the client ask for a code.
+    if ('twoFactorRequired' in outcome) {
+      res.status(200).json({
+        success: true,
+        data: { twoFactorRequired: true, challengeToken: outcome.challengeToken },
+      });
+      return;
+    }
+
+    res.cookie(REFRESH_COOKIE, outcome.tokens.refreshToken, refreshCookieOptions);
+    res.status(200).json({
+      success: true,
+      data: { user: outcome.user, accessToken: outcome.tokens.accessToken },
     });
+  }),
+
+  twoFactorLogin: catchAsync(async (req: Request, res: Response) => {
+    const { user, tokens } = await authService.verifyTwoFactorLogin(
+      req.body.challengeToken,
+      req.body.code,
+      { userAgent: req.get('user-agent') },
+    );
 
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
     res.status(200).json({
@@ -115,5 +136,24 @@ export const authController = {
     if (!user) throw AppError.unauthorized('Account no longer exists');
 
     res.status(200).json({ success: true, data: { user } });
+  }),
+
+  // ── 2FA management (all requireAuth) ──────────────────────
+  startTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    const data = await authService.startTwoFactorSetup(req.user!.sub);
+    res.status(200).json({ success: true, data });
+  }),
+
+  confirmTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    const { recoveryCodes } = await authService.confirmTwoFactorSetup(req.user!.sub, req.body.code);
+    res.status(200).json({
+      success: true,
+      data: { recoveryCodes, message: 'Two-factor is on. Save these recovery codes somewhere safe.' },
+    });
+  }),
+
+  disableTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    await authService.disableTwoFactor(req.user!.sub, req.body.code);
+    res.status(200).json({ success: true, data: { message: 'Two-factor turned off.' } });
   }),
 };

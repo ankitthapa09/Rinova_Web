@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { userRepository } from '@/repositories/user.repository';
 import { tokenService, type TokenPair } from '@/services/token.service';
+import { totpService } from '@/services/totp.service';
 import { emailService } from '@/services/email.service';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
@@ -19,8 +20,25 @@ export interface AuthResult {
   tokens: TokenPair;
 }
 
+/** Password was right, but 2FA is on — the client must send a code next. */
+export interface TwoFactorChallenge {
+  twoFactorRequired: true;
+  challengeToken: string;
+}
+
+export type LoginOutcome = AuthResult | TwoFactorChallenge;
+
 export interface AuthContext {
   userAgent?: string;
+}
+
+/** Mints a session (family + token pair) and stores it — the last step of every
+ *  successful login, whether or not 2FA was involved. */
+async function issueSession(user: UserDocument, context?: AuthContext): Promise<TokenPair> {
+  const family = crypto.randomUUID();
+  const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
+  await userRepository.addSession(user.id, sessionRecord(tokens.refreshToken, family, context));
+  return tokens;
 }
 
 /** A refresh always returns an access token; `refreshToken` is absent when the
@@ -70,13 +88,10 @@ export const authService = {
       logger.error('verification email failed', { userId: user.id, err });
     }
 
-    const family = crypto.randomUUID();
-    const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
-    await userRepository.addSession(user.id, sessionRecord(tokens.refreshToken, family, context));
-    return { user, tokens };
+    return { user, tokens: await issueSession(user, context) };
   },
 
-  async login(input: LoginInput, context?: AuthContext): Promise<AuthResult> {
+  async login(input: LoginInput, context?: AuthContext): Promise<LoginOutcome> {
     const user = await userRepository.findByEmailWithPassword(input.email);
 
     // checked first, so a locked account never confirms the right password
@@ -105,12 +120,46 @@ export const authService = {
       await userRepository.clearLoginFailures(user.id);
     }
 
-    await userRepository.recordLogin(user.id);
+    // Password checks out — but if 2FA is on, hand back a short-lived challenge
+    // instead of a session. No tokens until the code is verified.
+    if (user.twoFactorEnabled) {
+      logger.info('login awaiting 2FA', { userId: user.id });
+      return { twoFactorRequired: true, challengeToken: tokenService.sign2faChallenge(user.id) };
+    }
 
-    const family = crypto.randomUUID();
-    const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
-    await userRepository.addSession(user.id, sessionRecord(tokens.refreshToken, family, context));
-    return { user, tokens };
+    await userRepository.recordLogin(user.id);
+    return { user, tokens: await issueSession(user, context) };
+  },
+
+  /** Second login step — verifies the TOTP (or a recovery code) against the
+   *  challenge, then issues the real session. */
+  async verifyTwoFactorLogin(
+    challengeToken: string,
+    code: string,
+    context?: AuthContext,
+  ): Promise<AuthResult> {
+    const { sub } = tokenService.verify2faChallenge(challengeToken);
+    const user = await userRepository.findByIdWith2FA(sub);
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw AppError.unauthorized('Two-factor is not set up for this account');
+    }
+
+    const trimmed = code.trim();
+    // A dash marks it as a recovery code; otherwise it's a 6-digit TOTP.
+    if (trimmed.includes('-')) {
+      const idx = await totpService.matchRecoveryCode(trimmed, user.twoFactorRecoveryCodes ?? []);
+      if (idx === -1) throw AppError.unauthorized('Invalid code');
+      const remaining = (user.twoFactorRecoveryCodes ?? []).filter((_, i) => i !== idx);
+      await userRepository.setRecoveryCodes(user.id, remaining);
+      logger.info('2FA login via recovery code', { userId: user.id, remaining: remaining.length });
+    } else {
+      const result = await totpService.verify(trimmed, user.twoFactorSecret, user.twoFactorLastUsedStep);
+      if (!result.valid) throw AppError.unauthorized('Invalid code');
+      if (result.step !== undefined) await userRepository.setTwoFactorStep(user.id, result.step);
+    }
+
+    await userRepository.recordLogin(user.id);
+    return { user, tokens: await issueSession(user, context) };
   },
 
   /** Rotating refresh — every use burns the old token and issues a new one in
@@ -185,6 +234,56 @@ export const authService = {
     } catch {
       // malformed/expired token, nothing to remove
     }
+  },
+
+  /** 2FA setup step 1 — mint a secret and QR for a signed-in user. 2FA stays
+   *  OFF until a code confirms the app is set up (see confirmTwoFactor). */
+  async startTwoFactorSetup(userId: string): Promise<{ secret: string; qrDataUrl: string }> {
+    const user = await userRepository.findById(userId);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+    if (user.twoFactorEnabled) throw AppError.conflict('Two-factor is already enabled');
+
+    const secret = totpService.generateSecret();
+    await userRepository.setTwoFactorSecret(userId, secret);
+    const qrDataUrl = await totpService.qrDataUrl(totpService.keyUri(user.email, secret));
+    return { secret, qrDataUrl };
+  },
+
+  /** 2FA setup step 2 — verify the first code, switch 2FA on, and hand back the
+   *  one-time recovery codes (shown to the user exactly once). */
+  async confirmTwoFactorSetup(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
+    const user = await userRepository.findByIdWith2FA(userId);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+    if (user.twoFactorEnabled) throw AppError.conflict('Two-factor is already enabled');
+    if (!user.twoFactorSecret) throw AppError.badRequest('Start the setup before confirming');
+
+    const result = await totpService.verify(code.trim(), user.twoFactorSecret);
+    if (!result.valid) throw AppError.badRequest('That code is incorrect — try the current one');
+
+    const { plain, hashed } = await totpService.generateRecoveryCodes();
+    await userRepository.enableTwoFactor(userId, hashed);
+    if (result.step !== undefined) await userRepository.setTwoFactorStep(userId, result.step);
+    logger.info('2FA enabled', { userId });
+    return { recoveryCodes: plain };
+  },
+
+  /** Turns 2FA off — a fresh code (or recovery code) re-proves the second factor
+   *  first, so a hijacked session can't quietly remove it. */
+  async disableTwoFactor(userId: string, code: string): Promise<void> {
+    const user = await userRepository.findByIdWith2FA(userId);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw AppError.badRequest('Two-factor is not enabled');
+    }
+
+    const trimmed = code.trim();
+    const ok = trimmed.includes('-')
+      ? (await totpService.matchRecoveryCode(trimmed, user.twoFactorRecoveryCodes ?? [])) !== -1
+      : (await totpService.verify(trimmed, user.twoFactorSecret, user.twoFactorLastUsedStep)).valid;
+    if (!ok) throw AppError.badRequest('That code is incorrect');
+
+    await userRepository.disableTwoFactor(userId);
+    logger.info('2FA disabled', { userId });
   },
 
   /** Step 1 — request a reset link. Same response whether the email exists. */

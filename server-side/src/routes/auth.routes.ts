@@ -9,6 +9,8 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  twoFactorLoginSchema,
+  twoFactorCodeSchema,
 } from '@/validators/auth.validator';
 
 const router = Router();
@@ -16,6 +18,28 @@ const router = Router();
 // Credential endpoints get the strict limiter (failed attempts only)
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
+// Second login step — limited too, so a 6-digit code can't be brute-forced.
+router.post(
+  '/login/2fa',
+  authLimiter,
+  validate(twoFactorLoginSchema),
+  authController.twoFactorLogin,
+);
+
+// 2FA management — all require a live session.
+router.post('/2fa/setup', requireAuth, authController.startTwoFactor);
+router.post(
+  '/2fa/enable',
+  requireAuth,
+  validate(twoFactorCodeSchema),
+  authController.confirmTwoFactor,
+);
+router.post(
+  '/2fa/disable',
+  requireAuth,
+  validate(twoFactorCodeSchema),
+  authController.disableTwoFactor,
+);
 
 // Reset endpoints use the count-everything limiter (see rateLimiter.ts)
 router.post(

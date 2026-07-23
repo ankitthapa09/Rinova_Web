@@ -62,6 +62,51 @@ export const userRepository = {
     return User.findById(id).select('+passwordChangedAt +refreshSessions').exec();
   },
 
+  /** Loads the 2FA secrets — never selected by default. */
+  findByIdWith2FA(id: string): Promise<UserDocument | null> {
+    return User.findById(id)
+      .select('+twoFactorSecret +twoFactorRecoveryCodes +twoFactorLastUsedStep')
+      .exec();
+  },
+
+  /** Stores a secret during setup — 2FA stays OFF until a code confirms it. */
+  async setTwoFactorSecret(id: string, secret: string): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { twoFactorSecret: secret } }).exec();
+  },
+
+  /** Flips 2FA on once a code verified, saving the hashed recovery codes. */
+  async enableTwoFactor(id: string, recoveryHashes: string[]): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      { $set: { twoFactorEnabled: true, twoFactorRecoveryCodes: recoveryHashes } },
+    ).exec();
+  },
+
+  /** Records the last accepted TOTP step, blocking replay of that code. */
+  async setTwoFactorStep(id: string, step: number): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { twoFactorLastUsedStep: step } }).exec();
+  },
+
+  /** Burns a used recovery code so it can't work twice. */
+  async setRecoveryCodes(id: string, hashes: string[]): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { twoFactorRecoveryCodes: hashes } }).exec();
+  },
+
+  /** Turns 2FA off and wipes every trace of it. */
+  async disableTwoFactor(id: string): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      {
+        $set: { twoFactorEnabled: false },
+        $unset: {
+          twoFactorSecret: 1,
+          twoFactorRecoveryCodes: 1,
+          twoFactorLastUsedStep: 1,
+        },
+      },
+    ).exec();
+  },
+
   /** Adds a session, evicting the oldest past MAX_SESSIONS. */
   async addSession(id: string, session: RefreshSession): Promise<void> {
     await User.updateOne(

@@ -61,6 +61,24 @@ export const verifyEmailSchema = z.object({
     .regex(/^[a-f0-9]{64}$/, 'This verification link is not valid'),
 });
 
+/** A 6-digit TOTP code or a recovery code like "3f9a-c1b7". */
+const codeField = z
+  .string({ error: 'Enter your code' })
+  .trim()
+  .min(6, 'Enter your 6-digit code')
+  .max(20, 'That code is too long');
+
+/** Second login step — the challenge proves the password already passed. */
+export const twoFactorLoginSchema = z.object({
+  challengeToken: z.string({ error: 'Verification session missing' }).min(1),
+  code: codeField,
+});
+
+/** Confirming setup, or disabling — both need a live code. */
+export const twoFactorCodeSchema = z.object({
+  code: codeField,
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
