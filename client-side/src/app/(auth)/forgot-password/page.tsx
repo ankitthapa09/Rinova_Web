@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default function ForgotPasswordPage() {
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
   return (
     <AuthShell
       eyebrow="Account Recovery"
@@ -20,7 +22,7 @@ export default function ForgotPasswordPage() {
       switchLabel="Back to sign in"
       switchHref="/login"
     >
-      <ForgotPasswordForm />
+      <ForgotPasswordForm siteKey={siteKey} />
     </AuthShell>
   );
 }

@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default function LoginPage() {
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
   return (
     <AuthShell
       eyebrow="Members Garage"
@@ -20,7 +22,7 @@ export default function LoginPage() {
       switchLabel="Create an account"
       switchHref="/signup"
     >
-      <LoginForm />
+      <LoginForm siteKey={siteKey} />
     </AuthShell>
   );
 }

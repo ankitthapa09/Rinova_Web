@@ -6,15 +6,23 @@ import { MailCheck } from "lucide-react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
 import { authApi, ApiError } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
+import CaptchaWidget from "./CaptchaWidget";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ForgotPasswordForm() {
+interface ForgotPasswordFormProps {
+  siteKey?: string;
+}
+
+export default function ForgotPasswordForm({ siteKey }: ForgotPasswordFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | undefined>();
+  const [captchaError, setCaptchaError] = useState<string | undefined>();
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
   const [status, setStatus] = useState<SubmitStatus>("idle");
   const [sent, setSent] = useState(false);
 
@@ -33,19 +41,35 @@ export default function ForgotPasswordForm() {
 
     if (!EMAIL_RE.test(email)) {
       setError("Enter a valid email address.");
+      setCaptchaError(undefined);
+      shake();
+      return;
+    }
+    if (!captchaToken) {
+      setCaptchaError("Complete the captcha challenge.");
+      setError(undefined);
       shake();
       return;
     }
     setError(undefined);
+    setCaptchaError(undefined);
 
     setStatus("loading");
     try {
-      await authApi.forgotPassword(email);
+      await authApi.forgotPassword(email, captchaToken);
       setStatus("success");
       setSent(true);
     } catch (err) {
       setStatus("idle");
-      toast.error(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setCaptchaReset((value) => value + 1);
+      setCaptchaToken(null);
+      if (err instanceof ApiError) {
+        const captchaMessage = err.fieldErrors.captchaToken;
+        setCaptchaError(captchaMessage);
+        toast.error(captchaMessage ?? err.message);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
       shake();
     }
   };
@@ -79,6 +103,11 @@ export default function ForgotPasswordForm() {
         onChange={(e) => setEmail(e.target.value)}
         error={error}
       />
+
+      <div>
+        <CaptchaWidget siteKey={siteKey} resetSignal={captchaReset} onTokenChange={setCaptchaToken} />
+        {captchaError ? <p className="mt-2 text-xs text-accent">{captchaError}</p> : null}
+      </div>
 
       <div data-auth-item className="mt-2">
         <MagneticSubmit status={status} successLabel="Link sent">

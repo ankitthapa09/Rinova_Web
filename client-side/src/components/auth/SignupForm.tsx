@@ -6,6 +6,7 @@ import { gsap, MOTION_OK } from "@/components/landing/gsap";
 import { authApi, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
+import CaptchaWidget from "./CaptchaWidget";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 import PasswordStrength, { passwordMeetsRules } from "./PasswordStrength";
@@ -22,7 +23,11 @@ interface Fields {
   confirm: string;
 }
 
-export default function SignupForm() {
+interface SignupFormProps {
+  siteKey?: string;
+}
+
+export default function SignupForm({ siteKey }: SignupFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [fields, setFields] = useState<Fields>({
@@ -34,7 +39,9 @@ export default function SignupForm() {
     confirm: "",
   });
   const [terms, setTerms] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms", string>>>({});
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms" | "captcha", string>>>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
   // Already signed in? Skip the form rather than offering a second account.
   const { user: session, loading: sessionLoading } = useAuth(true);
@@ -70,6 +77,7 @@ export default function SignupForm() {
     if (fields.confirm !== fields.password || !fields.confirm)
       next.confirm = "Passwords don't match.";
     if (!terms) next.terms = "Please accept the terms to continue.";
+    if (!captchaToken) next.captcha = "Complete the captcha challenge.";
     setErrors(next);
     if (Object.keys(next).length > 0) {
       shake();
@@ -84,6 +92,7 @@ export default function SignupForm() {
         phone: fields.phone,
         address: fields.address.trim(),
         password: fields.password,
+        captchaToken,
       });
       setStatus("success");
       toast.success(`Welcome to the garage, ${user.name.split(" ")[0]}.`);
@@ -91,8 +100,13 @@ export default function SignupForm() {
       window.setTimeout(() => router.replace("/dashboard"), 900);
     } catch (err) {
       setStatus("idle");
+      setCaptchaReset((value) => value + 1);
+      setCaptchaToken(null);
       if (err instanceof ApiError) {
-        setErrors(err.fieldErrors);
+        setErrors({
+          ...err.fieldErrors,
+          captcha: err.fieldErrors.captchaToken,
+        });
         if (Object.keys(err.fieldErrors).length === 0) toast.error(err.message);
       } else {
         toast.error("Something went wrong. Please try again.");
@@ -160,6 +174,13 @@ export default function SignupForm() {
         onChange={set("confirm")}
         error={errors.confirm}
       />
+
+      <div data-auth-item>
+        <CaptchaWidget siteKey={siteKey} resetSignal={captchaReset} onTokenChange={setCaptchaToken} />
+        {errors.captcha ? (
+          <p className="mt-2 text-xs text-accent">{errors.captcha}</p>
+        ) : null}
+      </div>
 
       <div data-auth-item>
         <label className="flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-fog transition-colors hover:text-cream">

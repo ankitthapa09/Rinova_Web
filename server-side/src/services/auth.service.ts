@@ -41,6 +41,38 @@ async function issueSession(user: UserDocument, context?: AuthContext): Promise<
   return tokens;
 }
 
+async function verifyCaptcha(captchaToken?: string): Promise<void> {
+  if (!env.TURNSTILE_SECRET_KEY) return;
+  if (!captchaToken) {
+    throw AppError.badRequest('Complete the captcha challenge and try again');
+  }
+
+  const body = new URLSearchParams({
+    secret: env.TURNSTILE_SECRET_KEY,
+    response: captchaToken,
+  });
+
+  const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    body,
+  });
+
+  if (!response.ok) {
+    logger.warn('captcha verification request failed', { status: response.status });
+    throw AppError.internal('Unable to verify captcha right now');
+  }
+
+  const result = (await response.json()) as {
+    success?: boolean;
+    'error-codes'?: string[];
+  };
+
+  if (!result.success) {
+    logger.warn('captcha verification rejected', { errors: result['error-codes'] });
+    throw AppError.badRequest('Captcha verification failed');
+  }
+}
+
 /** A refresh always returns an access token; `refreshToken` is absent when the
  *  call lost a rotation race, meaning the caller's cookie must stay as it is. */
 export interface RefreshResult {
@@ -68,6 +100,8 @@ function sessionRecord(
 
 export const authService = {
   async register(input: RegisterInput, context?: AuthContext): Promise<AuthResult> {
+    await verifyCaptcha(input.captchaToken);
+
     if (await userRepository.existsByEmail(input.email)) {
       throw AppError.conflict('An account with this email already exists');
     }
@@ -92,6 +126,8 @@ export const authService = {
   },
 
   async login(input: LoginInput, context?: AuthContext): Promise<LoginOutcome> {
+    await verifyCaptcha(input.captchaToken);
+
     const user = await userRepository.findByEmailWithPassword(input.email);
 
     // checked first, so a locked account never confirms the right password
@@ -287,7 +323,9 @@ export const authService = {
   },
 
   /** Step 1 — request a reset link. Same response whether the email exists. */
-  async forgotPassword(email: string): Promise<void> {
+  async forgotPassword(email: string, captchaToken?: string): Promise<void> {
+    await verifyCaptcha(captchaToken);
+
     const user = await userRepository.findByEmailForReset(email);
     if (!user) {
       logger.info('password reset requested for unknown email');

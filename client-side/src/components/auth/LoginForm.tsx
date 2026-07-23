@@ -7,12 +7,17 @@ import { gsap, MOTION_OK } from "@/components/landing/gsap";
 import { authApi, ApiError, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
+import CaptchaWidget from "./CaptchaWidget";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function LoginForm() {
+interface LoginFormProps {
+  siteKey?: string;
+}
+
+export default function LoginForm({ siteKey }: LoginFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState("");
@@ -20,7 +25,14 @@ export default function LoginForm() {
   // Set once the server asks for a second factor — flips the form to code entry.
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string; code?: string }>({});
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    code?: string;
+    captcha?: string;
+  }>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
   // Already signed in (e.g. arrived here with the back button)? Don't show the
   // form — send them where they belong. Passive: no network call for guests.
@@ -52,7 +64,10 @@ export default function LoginForm() {
   const onError = (err: unknown) => {
     setStatus("idle");
     if (err instanceof ApiError) {
-      setErrors(err.fieldErrors);
+      setErrors({
+        ...err.fieldErrors,
+        captcha: err.fieldErrors.captchaToken,
+      });
       if (Object.keys(err.fieldErrors).length === 0) toast.error(err.message);
     } else {
       toast.error("Something went wrong. Please try again.");
@@ -90,6 +105,7 @@ export default function LoginForm() {
     const next: typeof errors = {};
     if (!EMAIL_RE.test(email)) next.email = "Enter a valid email address.";
     if (!password) next.password = "Enter your password.";
+    if (!captchaToken) next.captcha = "Complete the captcha challenge.";
     setErrors(next);
     if (Object.keys(next).length > 0) {
       shake();
@@ -98,7 +114,7 @@ export default function LoginForm() {
 
     setStatus("loading");
     try {
-      const result = await authApi.login({ email, password });
+      const result = await authApi.login({ email, password, captchaToken: captchaToken ?? undefined });
       // 2FA on — no session yet. Move to the code step instead of redirecting.
       if ("twoFactorRequired" in result) {
         setStatus("idle");
@@ -108,6 +124,8 @@ export default function LoginForm() {
       }
       finishSignIn(result.user);
     } catch (err) {
+      setCaptchaReset((value) => value + 1);
+      setCaptchaToken(null);
       onError(err);
     }
   };
@@ -195,6 +213,11 @@ export default function LoginForm() {
         <Link href="/forgot-password" className="nav-link text-fog hover:text-cream">
           Forgot password?
         </Link>
+      </div>
+
+      <div data-auth-item className="mt-2">
+        <CaptchaWidget siteKey={siteKey} resetSignal={captchaReset} onTokenChange={setCaptchaToken} />
+        {errors.captcha ? <p className="mt-2 text-xs text-accent">{errors.captcha}</p> : null}
       </div>
 
       <div data-auth-item className="mt-2">

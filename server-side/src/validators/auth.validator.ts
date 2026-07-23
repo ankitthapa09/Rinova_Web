@@ -36,6 +36,7 @@ export const registerSchema = z.object({
     .min(3, 'Address must be at least 3 characters')
     .max(120, 'Address must be at most 120 characters'),
   password: passwordRule,
+  captchaToken: z.string({ error: 'Captcha verification is required' }).min(1).optional(),
 });
 
 /** Self-service profile edit — the contact fields only, reusing register's rules.
@@ -45,10 +46,12 @@ export const updateProfileSchema = registerSchema.pick({ name: true, phone: true
 export const loginSchema = z.object({
   email: z.email('Enter a valid email address').trim().toLowerCase(),
   password: z.string({ error: 'Password is required' }).min(1, 'Enter your password'),
+  captchaToken: z.string({ error: 'Captcha verification is required' }).min(1).optional(),
 });
 
 export const forgotPasswordSchema = z.object({
   email: z.email('Enter a valid email address').trim().toLowerCase(),
+  captchaToken: z.string({ error: 'Captcha verification is required' }).min(1).optional(),
 });
 
 export const resetPasswordSchema = z.object({

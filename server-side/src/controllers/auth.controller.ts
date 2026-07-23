@@ -97,7 +97,7 @@ export const authController = {
   }),
 
   forgotPassword: catchAsync(async (req: Request, res: Response) => {
-    await authService.forgotPassword(req.body.email);
+    await authService.forgotPassword(req.body.email, req.body.captchaToken);
     // Identical response whether the account exists or not.
     res.status(200).json({
       success: true,

@@ -92,11 +92,13 @@ export interface RegisterInput {
   phone: string;
   address: string;
   password: string;
+  captchaToken?: string;
 }
 
 export interface LoginInput {
   email: string;
   password: string;
+  captchaToken?: string;
 }
 
 type AuthData = { user: ApiUser; accessToken: string };
@@ -210,10 +212,10 @@ export const authApi = {
   },
 
   /** Requests a reset link — the server never says whether the email exists. */
-  async forgotPassword(email: string): Promise<string> {
+  async forgotPassword(email: string, captchaToken?: string): Promise<string> {
     const { message } = await request<{ message: string }>("/auth/forgot-password", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, captchaToken }),
     });
     return message;
   },

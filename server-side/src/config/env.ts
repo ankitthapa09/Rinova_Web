@@ -45,6 +45,9 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().default('Rinova <no-reply@rinova.com.np>'),
 
+  // Captcha — Turnstile is used for the public auth forms when configured.
+  TURNSTILE_SECRET_KEY: z.string().optional(),
+
   // Rate limiting
   /** Hops of reverse proxy in front of the app (0 = none). Only set this when
    *  a proxy really exists — trusting X-Forwarded-For without one lets clients
@@ -63,6 +66,11 @@ if (!parsed.success) {
     .join('\n');
   // Logger isn't available this early — it depends on validated config itself.
   console.error(`\n Invalid environment configuration:\n${issues}\n`);
+  process.exit(1);
+}
+
+if (parsed.data.NODE_ENV === 'production' && !parsed.data.TURNSTILE_SECRET_KEY) {
+  console.error('\n Invalid environment configuration:\n  • TURNSTILE_SECRET_KEY: is required in production\n');
   process.exit(1);
 }
 
