@@ -13,7 +13,7 @@ import {
   PASSWORD_HISTORY_LIMIT,
   type UserDocument,
 } from '@/models/user.model';
-import type { RegisterInput, LoginInput } from '@/validators/auth.validator';
+import type { RegisterInput, LoginInput, UpdateProfileInput } from '@/validators/auth.validator';
 
 export interface AuthResult {
   user: UserDocument;
@@ -336,6 +336,14 @@ export const authService = {
       `${env.CLIENT_URL}/verify-email/${rawToken}`,
     );
     logger.info('verification email resent', { userId: user.id });
+  },
+
+  /** Self-service profile edit — contact fields only (email/role can't change here). */
+  async updateProfile(userId: string, input: UpdateProfileInput): Promise<UserDocument> {
+    const user = await userRepository.updateProfile(userId, input);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+    logger.info('profile updated', { userId: user.id });
+    return user;
   },
 
   /** Step 2 — set the new password with the emailed token. Single-use. */

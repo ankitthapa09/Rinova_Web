@@ -1,13 +1,11 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
-import { BadgeCheck, CircleDashed } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
-import { useDashboardUser } from "@/components/dashboard/DashboardShell";
+import AccountCard from "@/components/dashboard/AccountCard";
 import TwoFactorCard from "@/components/dashboard/TwoFactorCard";
 
 export default function ProfileView() {
-  const user = useDashboardUser();
   const rootRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -35,41 +33,9 @@ export default function ProfileView() {
         </p>
       </header>
 
-      {/* Account details — read-only mirror of the overview card. */}
-      <section
-        data-dash-item
-        className="mt-10 rounded-2xl border border-line bg-surface/60 p-6"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-fog">
-            Account Details
-          </h2>
-          {user.isEmailVerified ? (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-accent">
-              <BadgeCheck className="h-3.5 w-3.5" /> Verified
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-fog">
-              <CircleDashed className="h-3.5 w-3.5" /> Unverified
-            </span>
-          )}
-        </div>
-        <dl className="mt-5 grid gap-x-10 gap-y-4 text-sm sm:grid-cols-2">
-          {[
-            ["Name", user.name],
-            ["Email", user.email],
-            ["Phone", user.phone],
-            ["Address", user.address],
-          ].map(([label, value]) => (
-            <div
-              key={label}
-              className="flex justify-between gap-6 border-b border-line/60 pb-3"
-            >
-              <dt className="shrink-0 text-fog">{label}</dt>
-              <dd className="truncate text-right text-cream">{value}</dd>
-            </div>
-          ))}
-        </dl>
+      {/* Account details — editable; email stays locked. */}
+      <section className="mt-10">
+        <AccountCard />
       </section>
 
       {/* Two-factor authentication */}

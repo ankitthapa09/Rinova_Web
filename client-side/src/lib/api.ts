@@ -196,6 +196,19 @@ export const authApi = {
     return request<{ user: ApiUser }>("/auth/me");
   },
 
+  /** Updates the signed-in user's own contact details (name, phone, address). */
+  async updateProfile(input: {
+    name: string;
+    phone: string;
+    address: string;
+  }): Promise<ApiUser> {
+    const { user } = await request<{ user: ApiUser }>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    return user;
+  },
+
   /** Requests a reset link — the server never says whether the email exists. */
   async forgotPassword(email: string): Promise<string> {
     const { message } = await request<{ message: string }>("/auth/forgot-password", {

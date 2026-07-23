@@ -138,6 +138,12 @@ export const authController = {
     res.status(200).json({ success: true, data: { user } });
   }),
 
+  // Requires requireAuth before it in the chain.
+  updateMe: catchAsync(async (req: Request, res: Response) => {
+    const user = await authService.updateProfile(req.user!.sub, req.body);
+    res.status(200).json({ success: true, data: { user } });
+  }),
+
   // ── 2FA management (all requireAuth) ──────────────────────
   startTwoFactor: catchAsync(async (req: Request, res: Response) => {
     const data = await authService.startTwoFactorSetup(req.user!.sub);

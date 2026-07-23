@@ -38,6 +38,10 @@ export const registerSchema = z.object({
   password: passwordRule,
 });
 
+/** Self-service profile edit — the contact fields only, reusing register's rules.
+ *  Email and role are intentionally out of reach here. */
+export const updateProfileSchema = registerSchema.pick({ name: true, phone: true, address: true });
+
 export const loginSchema = z.object({
   email: z.email('Enter a valid email address').trim().toLowerCase(),
   password: z.string({ error: 'Password is required' }).min(1, 'Enter your password'),
@@ -80,6 +84,7 @@ export const twoFactorCodeSchema = z.object({
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

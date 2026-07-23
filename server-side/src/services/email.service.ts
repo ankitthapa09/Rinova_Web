@@ -35,6 +35,70 @@ export interface MailMessage {
   html: string;
 }
 
+// Midnight-garage palette, mirrored from the site so the inbox feels like Rinova.
+const C = {
+  night: '#0B0B0D',
+  surface: '#15141A',
+  cream: '#F4F1EA',
+  fog: '#8F8A7E',
+  line: '#26242B',
+  accent: '#FF5C1A',
+};
+
+interface ThemedEmail {
+  preheader: string; // hidden inbox-preview line
+  heading: string;
+  intro: string;
+  ctaLabel: string;
+  ctaUrl: string;
+  expiryNote: string;
+  footer: string;
+}
+
+/**
+ * One themed shell for every transactional email — table-based and
+ * inline-styled so it survives Gmail/Outlook, which strip <style> and flexbox.
+ */
+function renderEmail(e: ThemedEmail): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:${C.night};">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0">${e.preheader}</span>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.night};padding:40px 16px">
+    <tr><td align="center">
+      <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:${C.surface};border:1px solid ${C.line};border-radius:16px;overflow:hidden">
+        <tr><td style="padding:36px 36px 8px">
+          <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:22px;letter-spacing:2px;color:${C.cream}">
+            RINOVA<span style="color:${C.accent}">.</span>
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px 36px 0">
+          <h1 style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:26px;line-height:1.2;color:${C.cream};font-weight:normal">${e.heading}</h1>
+          <p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:${C.fog}">${e.intro}</p>
+        </td></tr>
+        <tr><td style="padding:28px 36px 0">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:999px;background:${C.accent}">
+            <a href="${e.ctaUrl}" style="display:inline-block;padding:13px 32px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;color:${C.night};text-decoration:none;border-radius:999px">${e.ctaLabel}</a>
+          </td></tr></table>
+        </td></tr>
+        <tr><td style="padding:24px 36px 0">
+          <p style="margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${C.fog}">Button not working? Paste this link into your browser:</p>
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;word-break:break-all"><a href="${e.ctaUrl}" style="color:${C.accent};text-decoration:none">${e.ctaUrl}</a></p>
+          <p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${C.fog}">${e.expiryNote}</p>
+        </td></tr>
+        <tr><td style="padding:28px 36px 36px">
+          <div style="border-top:1px solid ${C.line};padding-top:16px">
+            <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:${C.fog}">${e.footer}</p>
+          </div>
+        </td></tr>
+      </table>
+      <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${C.line}">Rinova — vehicle rentals &amp; detailing</p>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 export const emailService = {
   async send(message: MailMessage): Promise<void> {
     if (!smtpConfigured()) {
@@ -70,22 +134,17 @@ export const emailService = {
         '',
         "If you didn't ask for this, ignore this email — your password stays as it is.",
       ].join('\n'),
-      html: `
-        <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0B0B0D;color:#F4F1EA;border-radius:12px">
-          <p style="font-size:22px;font-family:Georgia,serif;margin:0 0 20px">RINOVA</p>
-          <p style="margin:0 0 12px">Hi ${firstName},</p>
-          <p style="margin:0 0 20px;color:#8F8A7E">
-            Someone asked to reset the password for your Rinova account.
-            If this was you, the link below works for the next <strong style="color:#F4F1EA">30 minutes</strong>.
-          </p>
-          <a href="${resetUrl}"
-             style="display:inline-block;background:#FF5C1A;color:#0B0B0D;text-decoration:none;font-weight:bold;padding:12px 28px;border-radius:999px;margin:0 0 20px">
-            Reset password
-          </a>
-          <p style="margin:0;color:#8F8A7E;font-size:13px">
-            If you didn't ask for this, ignore this email — your password stays as it is.
-          </p>
-        </div>`,
+      html: renderEmail({
+        preheader: 'Reset your Rinova password — link expires in 30 minutes.',
+        heading: `Hi ${firstName}, let's reset your password.`,
+        intro:
+          'Someone asked to reset the password for your Rinova account. If this was you, use the button below to choose a new one.',
+        ctaLabel: 'Reset password',
+        ctaUrl: resetUrl,
+        expiryNote: 'This link works for the next 30 minutes, then it expires.',
+        footer:
+          "If you didn't ask for this, ignore this email — your password stays exactly as it is.",
+      }),
     });
   },
 
@@ -105,22 +164,16 @@ export const emailService = {
         '',
         "If you didn't create a Rinova account, you can ignore this email.",
       ].join('\n'),
-      html: `
-        <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0B0B0D;color:#F4F1EA;border-radius:12px">
-          <p style="font-size:22px;font-family:Georgia,serif;margin:0 0 20px">RINOVA</p>
-          <p style="margin:0 0 12px">Hi ${firstName},</p>
-          <p style="margin:0 0 20px;color:#8F8A7E">
-            Welcome to Rinova. Confirm this email address — the link works for the next
-            <strong style="color:#F4F1EA">24 hours</strong>.
-          </p>
-          <a href="${verifyUrl}"
-             style="display:inline-block;background:#FF5C1A;color:#0B0B0D;text-decoration:none;font-weight:bold;padding:12px 28px;border-radius:999px;margin:0 0 20px">
-            Verify email
-          </a>
-          <p style="margin:0;color:#8F8A7E;font-size:13px">
-            If you didn't create a Rinova account, you can ignore this email.
-          </p>
-        </div>`,
+      html: renderEmail({
+        preheader: 'Confirm your email to finish setting up your Rinova account.',
+        heading: `Welcome to Rinova, ${firstName}.`,
+        intro:
+          'One quick step to finish setting up your account — confirm this email address so we know it really reaches you.',
+        ctaLabel: 'Verify email',
+        ctaUrl: verifyUrl,
+        expiryNote: 'This link works for the next 24 hours, then it expires.',
+        footer: "If you didn't create a Rinova account, you can safely ignore this email.",
+      }),
     });
   },
 };

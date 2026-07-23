@@ -11,6 +11,7 @@ import {
   verifyEmailSchema,
   twoFactorLoginSchema,
   twoFactorCodeSchema,
+  updateProfileSchema,
 } from '@/validators/auth.validator';
 
 const router = Router();
@@ -65,5 +66,6 @@ router.post('/resend-verification', resetLimiter, requireAuth, authController.re
 router.post('/refresh', authLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
+router.patch('/me', requireAuth, validate(updateProfileSchema), authController.updateMe);
 
 export default router;

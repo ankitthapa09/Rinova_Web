@@ -54,6 +54,14 @@ export const userRepository = {
     return User.findById(id).exec();
   },
 
+  /** Self-service profile edit — only the contact fields, never email or role. */
+  updateProfile(
+    id: string,
+    data: Pick<IUser, 'name' | 'phone' | 'address'>,
+  ): Promise<UserDocument | null> {
+    return User.findByIdAndUpdate(id, data, { new: true, runValidators: true }).exec();
+  },
+
   findByIdWithPasswordChangedAt(id: string): Promise<UserDocument | null> {
     return User.findById(id).select('+passwordChangedAt').exec();
   },

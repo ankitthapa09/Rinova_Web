@@ -31,12 +31,11 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
 
-  // CORS — the browser origin allowed to call this API
-  // Comma-separated list of allowed browser origins
+  // App URL — the canonical client origin used in email links.
   CLIENT_URL: z
     .string()
     .default('http://localhost:3000')
-    .transform((s) => s.split(',').map((url) => url.trim()))
+    .transform((s) => s.split(',').map((url) => url.trim()).filter(Boolean))
     .pipe(z.array(z.url())),
 
   // Email (SMTP) — optional in dev; auth flows degrade gracefully without it
@@ -67,7 +66,14 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-export const env = parsed.data;
+const clientUrls = parsed.data.CLIENT_URL;
+
+export const env = {
+  ...parsed.data,
+  CLIENT_URL: clientUrls[0],
+};
+
+export const clientUrlList = clientUrls;
 
 export const isProd = env.NODE_ENV === 'production';
 export const isDev = env.NODE_ENV === 'development';

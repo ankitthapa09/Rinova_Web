@@ -9,10 +9,11 @@ const router = Router();
 // Everything about bookings involves an identity — no anonymous routes.
 router.use(requireAuth);
 
-// Customer
-router.post('/', validate(createBookingSchema), bookingController.create);
-router.get('/mine', bookingController.listMine);
-router.patch('/:id/cancel', bookingController.cancel);
+// Customer — only real customers rent vehicles; admins manage the fleet, so
+// they can't book (not even their own vehicles).
+router.post('/', requireRole('user'), validate(createBookingSchema), bookingController.create);
+router.get('/mine', requireRole('user'), bookingController.listMine);
+router.patch('/:id/cancel', requireRole('user'), bookingController.cancel);
 
 // Admin
 router.get('/', requireRole('admin'), bookingController.listAll);

@@ -2,7 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { env } from '@/config/env';
+import { clientUrlList, env } from '@/config/env';
 import { generalLimiter } from '@/middlewares/rateLimiter';
 import { notFoundHandler, errorHandler } from '@/middlewares/error.middleware';
 import routes from '@/routes';
@@ -16,7 +16,7 @@ const app = express();
 if (env.TRUST_PROXY > 0) app.set('trust proxy', env.TRUST_PROXY);
 
 app.use(helmet());
-app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
+app.use(cors({ origin: clientUrlList, credentials: true }));
 
 // Auth payloads are tiny; a small limit blunts oversized-body abuse
 app.use(express.json({ limit: '10kb' }));
