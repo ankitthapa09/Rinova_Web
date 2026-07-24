@@ -72,9 +72,14 @@ export default function Navbar() {
             <Link
               href="/dashboard"
               title={`${user.name} — dashboard`}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-[13px] font-medium text-night transition-shadow duration-300 hover:shadow-glow"
+              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-accent text-[13px] font-medium text-night transition-shadow duration-300 hover:shadow-glow"
             >
-              {initials(user.name)}
+              {user.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials(user.name)
+              )}
             </Link>
           ) : (
             <>
@@ -133,8 +138,13 @@ export default function Navbar() {
               onClick={() => setOpen(false)}
               className="inline-flex items-center justify-center gap-3 rounded-full bg-accent px-8 py-4 text-sm font-medium text-night"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-night/15 text-[11px]">
-                {initials(user.name)}
+              <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-night/15 text-[11px]">
+                {user.profileImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initials(user.name)
+                )}
               </span>
               My Dashboard
             </Link>
