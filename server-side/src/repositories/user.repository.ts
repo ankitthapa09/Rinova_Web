@@ -54,6 +54,12 @@ export const userRepository = {
     return User.findById(id).exec();
   },
 
+  /** Ids of every admin — used to fan notifications out to the whole desk. */
+  async findAdminIds(): Promise<string[]> {
+    const admins = await User.find({ role: 'admin' }).select('_id').lean().exec();
+    return admins.map((a) => String(a._id));
+  },
+
   /** Self-service profile edit — only the contact fields, never email or role. */
   updateProfile(
     id: string,

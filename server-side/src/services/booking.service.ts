@@ -1,6 +1,8 @@
 import { Types } from 'mongoose';
 import { bookingRepository } from '@/repositories/booking.repository';
 import { vehicleRepository } from '@/repositories/vehicle.repository';
+import { userRepository } from '@/repositories/user.repository';
+import { notificationService } from '@/services/notification.service';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 import type { BookingDocument } from '@/models/booking.model';
@@ -44,7 +46,14 @@ export const bookingService = {
     });
 
     logger.info('booking requested', { bookingId: booking.id, userId, vehicle: vehicle.slug, days });
-    return booking.populate('vehicle', VEHICLE_FIELDS);
+
+    const populated = await booking.populate('vehicle', VEHICLE_FIELDS);
+    const customer = await userRepository.findById(userId);
+    await notificationService.rentalCreated(populated, {
+      customerName: customer?.name ?? 'A customer',
+      vehicleName: vehicle.name,
+    });
+    return populated;
   },
 
   /** A customer's own bookings. */
@@ -81,6 +90,9 @@ export const bookingService = {
     booking.status = input.status;
     await booking.save();
     logger.info('booking resolved', { bookingId: booking.id, status: input.status });
+
+    const vehicle = await vehicleRepository.findById(String(booking.vehicle));
+    await notificationService.rentalResolved(booking, { vehicleName: vehicle?.name ?? 'your vehicle' });
     return booking;
   },
 
@@ -100,6 +112,15 @@ export const bookingService = {
     booking.status = 'cancelled';
     await booking.save();
     logger.info('booking cancelled by customer', { bookingId: booking.id, userId });
+
+    const [customer, vehicle] = await Promise.all([
+      userRepository.findById(userId),
+      vehicleRepository.findById(String(booking.vehicle)),
+    ]);
+    await notificationService.rentalCancelled({
+      customerName: customer?.name ?? 'A customer',
+      vehicleName: vehicle?.name ?? 'a vehicle',
+    });
     return booking;
   },
 };

@@ -1,5 +1,7 @@
 import { Types } from 'mongoose';
 import { washOrderRepository } from '@/repositories/washOrder.repository';
+import { userRepository } from '@/repositories/user.repository';
+import { notificationService } from '@/services/notification.service';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 import {
@@ -105,6 +107,9 @@ export const washOrderService = {
       package: pkg.id,
       slot: input.slot,
     });
+
+    const customer = await userRepository.findById(userId);
+    await notificationService.washCreated(order, { customerName: customer?.name ?? 'A customer' });
     return order;
   },
 
@@ -152,6 +157,8 @@ export const washOrderService = {
     order.status = input.status;
     await order.save();
     logger.info('wash order resolved', { orderId: order.id, status: input.status });
+
+    await notificationService.washResolved(order);
     return order;
   },
 
@@ -171,6 +178,9 @@ export const washOrderService = {
     order.status = 'cancelled';
     await order.save();
     logger.info('wash order cancelled by customer', { orderId: order.id, userId });
+
+    const customer = await userRepository.findById(userId);
+    await notificationService.washCancelled(order, { customerName: customer?.name ?? 'A customer' });
     return order;
   },
 };
