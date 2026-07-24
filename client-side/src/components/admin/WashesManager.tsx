@@ -12,6 +12,7 @@ import {
 } from "@/lib/washApi";
 import { CATEGORY_LABELS, formatNpr } from "@/lib/vehicleApi";
 import { ApiError } from "@/lib/api";
+import { useFocusItem } from "@/lib/useFocusItem";
 import { toast } from "@/components/ui/toast";
 
 const STATUS_STYLES: Record<WashOrderStatus, string> = {
@@ -55,6 +56,7 @@ function customer(order: WashOrder): WashOrderUser | null {
 
 export default function WashesManager() {
   const [orders, setOrders] = useState<WashOrder[] | null>(null);
+  useFocusItem(orders);
   const [catalogue, setCatalogue] = useState<WashCatalogue | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -202,7 +204,8 @@ export default function WashesManager() {
               return (
                 <li
                   key={order._id}
-                  className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4"
+                  id={`item-${order._id}`}
+                  className="flex scroll-mt-28 flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4 transition duration-500 data-[focus=true]:ring-2 data-[focus=true]:ring-accent"
                 >
                   <div className="min-w-[220px] flex-1">
                     <p className="truncate text-[14px] text-cream">

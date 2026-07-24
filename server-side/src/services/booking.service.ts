@@ -120,6 +120,7 @@ export const bookingService = {
     await notificationService.rentalCancelled({
       customerName: customer?.name ?? 'A customer',
       vehicleName: vehicle?.name ?? 'a vehicle',
+      bookingId: booking.id,
     });
     return booking;
   },

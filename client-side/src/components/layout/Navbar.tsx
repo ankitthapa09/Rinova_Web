@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import MagneticButton from "@/components/landing/MagneticButton";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { useAuth } from "@/lib/useAuth";
 
 function initials(name: string): string {
@@ -69,6 +70,8 @@ export default function Navbar() {
         {/* CTA / avatar */}
         <div className="hidden items-center gap-7 lg:flex">
           {loading ? null : user ? (
+            <>
+            <NotificationBell />
             <Link
               href="/dashboard"
               title={`${user.name} — dashboard`}
@@ -81,6 +84,7 @@ export default function Navbar() {
                 initials(user.name)
               )}
             </Link>
+            </>
           ) : (
             <>
               <Link href="/login" className="nav-link text-[13px] font-medium text-cream/70 hover:text-cream">

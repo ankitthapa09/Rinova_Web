@@ -5,6 +5,7 @@ import { Check, X, Loader2, AlertCircle } from "lucide-react";
 import { bookingApi, type Booking, type BookingStatus, type BookingUser } from "@/lib/bookingApi";
 import { formatNpr } from "@/lib/vehicleApi";
 import { ApiError } from "@/lib/api";
+import { useFocusItem } from "@/lib/useFocusItem";
 import { toast } from "@/components/ui/toast";
 
 const STATUS_STYLES: Record<BookingStatus, string> = {
@@ -30,6 +31,7 @@ export default function RentalsManager() {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  useFocusItem(bookings);
 
   const reload = useCallback(async () => {
     try {
@@ -108,7 +110,8 @@ export default function RentalsManager() {
               return (
                 <li
                   key={b._id}
-                  className="flex items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4"
+                  id={`item-${b._id}`}
+                  className="flex scroll-mt-28 items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4 transition duration-500 data-[focus=true]:ring-2 data-[focus=true]:ring-accent"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

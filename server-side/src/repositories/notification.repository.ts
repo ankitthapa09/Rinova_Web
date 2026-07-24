@@ -15,8 +15,10 @@ export interface NewNotification {
   link?: string;
 }
 
-// Newest first; a hard cap keeps the bell dropdown and payloads small.
-const LIST_LIMIT = 30;
+// Newest first; the caller picks how many (the bell wants a few, the full
+// page many), and this hard ceiling keeps any single payload bounded.
+const DEFAULT_LIMIT = 30;
+export const MAX_LIMIT = 100;
 
 export const notificationRepository = {
   create(data: NewNotification): Promise<NotificationDocument> {
@@ -31,8 +33,8 @@ export const notificationRepository = {
     );
   },
 
-  findByRecipient(userId: string): Promise<NotificationDocument[]> {
-    return Notification.find({ recipient: userId }).sort({ createdAt: -1 }).limit(LIST_LIMIT).exec();
+  findByRecipient(userId: string, limit: number = DEFAULT_LIMIT): Promise<NotificationDocument[]> {
+    return Notification.find({ recipient: userId }).sort({ createdAt: -1 }).limit(limit).exec();
   },
 
   countUnread(userId: string): Promise<number> {

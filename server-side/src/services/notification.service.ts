@@ -27,8 +27,8 @@ async function safe(label: string, fn: () => Promise<void>): Promise<void> {
 
 export const notificationService = {
   // ── Queries the bell reads ────────────────────────────────
-  listMine(userId: string): Promise<NotificationDocument[]> {
-    return notificationRepository.findByRecipient(userId);
+  listMine(userId: string, limit?: number): Promise<NotificationDocument[]> {
+    return notificationRepository.findByRecipient(userId, limit);
   },
 
   unreadCount(userId: string): Promise<number> {
@@ -56,13 +56,13 @@ export const notificationService = {
         type: 'rental_created',
         title: 'Booking requested',
         message: `Your request to rent ${opts.vehicleName} is in — we'll confirm it shortly.`,
-        link: CUSTOMER_RENTALS,
+        link: `${CUSTOMER_RENTALS}?focus=${booking.id}`,
       });
       await notificationRepository.createForMany(await userRepository.findAdminIds(), {
         type: 'rental_created',
         title: 'New booking request',
         message: `${opts.customerName} requested ${opts.vehicleName} for ${nights}.`,
-        link: ADMIN_RENTALS,
+        link: `${ADMIN_RENTALS}?focus=${booking.id}`,
       });
     });
   },
@@ -78,19 +78,19 @@ export const notificationService = {
         message: confirmed
           ? `Your rental of ${opts.vehicleName} is confirmed. See you soon.`
           : `Your request for ${opts.vehicleName} was declined.`,
-        link: CUSTOMER_RENTALS,
+        link: `${CUSTOMER_RENTALS}?focus=${booking.id}`,
       });
     });
   },
 
   /** Customer cancelled — let the admin desk know. */
-  rentalCancelled(opts: { customerName: string; vehicleName: string }): Promise<void> {
+  rentalCancelled(opts: { customerName: string; vehicleName: string; bookingId: string }): Promise<void> {
     return safe('rentalCancelled', async () => {
       await notificationRepository.createForMany(await userRepository.findAdminIds(), {
         type: 'rental_cancelled',
         title: 'Booking cancelled',
         message: `${opts.customerName} cancelled their ${opts.vehicleName} booking.`,
-        link: ADMIN_RENTALS,
+        link: `${ADMIN_RENTALS}?focus=${opts.bookingId}`,
       });
     });
   },
@@ -103,13 +103,13 @@ export const notificationService = {
         type: 'wash_created',
         title: 'Wash booked',
         message: `Your ${order.packageName} wash is in — we'll confirm it shortly.`,
-        link: CUSTOMER_WASHES,
+        link: `${CUSTOMER_WASHES}?focus=${order.id}`,
       });
       await notificationRepository.createForMany(await userRepository.findAdminIds(), {
         type: 'wash_created',
         title: 'New wash request',
         message: `${opts.customerName} booked a ${order.packageName} wash for ${order.slot}.`,
-        link: ADMIN_WASHES,
+        link: `${ADMIN_WASHES}?focus=${order.id}`,
       });
     });
   },
@@ -130,7 +130,7 @@ export const notificationService = {
         type: entry.type,
         title: entry.title,
         message: `Your ${order.packageName} wash ${entry.body}`,
-        link: CUSTOMER_WASHES,
+        link: `${CUSTOMER_WASHES}?focus=${order.id}`,
       });
     });
   },
@@ -142,7 +142,7 @@ export const notificationService = {
         type: 'wash_cancelled',
         title: 'Wash cancelled',
         message: `${opts.customerName} cancelled their ${order.packageName} wash.`,
-        link: ADMIN_WASHES,
+        link: `${ADMIN_WASHES}?focus=${order.id}`,
       });
     });
   },

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { LayoutDashboard, CarFront, Droplets, UserRound, LogOut } from "lucide-react";
+import { LayoutDashboard, CarFront, Droplets, Bell, UserRound, LogOut } from "lucide-react";
 import Cursor from "@/components/landing/Cursor";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { authApi, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
@@ -38,6 +39,7 @@ const NAV: NavItem[] = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Rentals", href: "/dashboard/rentals", icon: CarFront },
   { label: "Wash Orders", href: "/dashboard/washes", icon: Droplets },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Profile", href: "/dashboard/profile", icon: UserRound },
 ];
 
@@ -126,9 +128,12 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
         {/* ── Sidebar ─────────────────────────────────────── */}
         <aside className="sticky top-0 hidden h-[100svh] w-[250px] shrink-0 flex-col border-r border-line px-6 py-8 lg:flex">
-          <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
-            RINOVA
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
+              RINOVA
+            </Link>
+            <NotificationBell />
+          </div>
 
           <nav className="mt-12 flex flex-col gap-1">
             <NavLinks pathname={pathname} />
@@ -173,13 +178,16 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
                 RINOVA
               </Link>
-              <button
-                onClick={onLogout}
-                aria-label="Sign out"
-                className="rounded-full p-2 text-fog transition-colors hover:text-accent"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <NotificationBell />
+                <button
+                  onClick={onLogout}
+                  aria-label="Sign out"
+                  className="rounded-full p-2 text-fog transition-colors hover:text-accent"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Mobile nav */}

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { bookingApi, type Booking, type BookingStatus } from "@/lib/bookingApi";
 import { formatNpr } from "@/lib/vehicleApi";
 import { ApiError } from "@/lib/api";
+import { useFocusItem } from "@/lib/useFocusItem";
 import { toast } from "@/components/ui/toast";
 
 export const STATUS_STYLES: Record<BookingStatus, string> = {
@@ -38,6 +39,7 @@ export default function RentalsList({
   onChanged: () => void;
 }) {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  useFocusItem(bookings);
 
   const cancelBooking = async (b: Booking) => {
     if (cancellingId) return;
@@ -58,7 +60,8 @@ export default function RentalsList({
       {bookings.map((b) => (
         <li
           key={b._id}
-          className="flex items-center gap-4 border-b border-line/60 pb-3 last:border-0 last:pb-0"
+          id={`item-${b._id}`}
+          className="flex scroll-mt-28 items-center gap-4 rounded-lg border-b border-line/60 pb-3 transition duration-500 last:border-0 last:pb-0 data-[focus=true]:bg-accent/5 data-[focus=true]:ring-2 data-[focus=true]:ring-accent"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
