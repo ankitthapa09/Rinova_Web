@@ -60,10 +60,14 @@ const multerUpload = multer({
 });
 
 
-export function uploadSingle(field = 'file') {
+export function uploadSingle(field = 'file', fixedKind?: UploadKind) {
   const run = multerUpload.single(field);
 
   return (req: Request, res: Response, next: NextFunction) => {
+    // Routes without a :kind param (e.g. avatar upload) pin the kind here, so
+    // the shared fileFilter and size checks below have a rule to apply.
+    if (fixedKind) req.params.kind = fixedKind;
+
     run(req, res, (err: unknown) => {
       if (err) {
         if (err instanceof MulterError) {

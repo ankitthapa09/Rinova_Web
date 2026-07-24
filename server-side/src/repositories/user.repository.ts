@@ -62,6 +62,19 @@ export const userRepository = {
     return User.findByIdAndUpdate(id, data, { new: true, runValidators: true }).exec();
   },
 
+  /** Includes the Cloudinary publicId (select:false) so the old photo can be deleted. */
+  findByIdWithImageId(id: string): Promise<UserDocument | null> {
+    return User.findById(id).select('+profileImagePublicId').exec();
+  },
+
+  setProfileImage(id: string, url: string, publicId: string): Promise<UserDocument | null> {
+    return User.findByIdAndUpdate(
+      id,
+      { profileImageUrl: url, profileImagePublicId: publicId },
+      { new: true },
+    ).exec();
+  },
+
   findByIdWithPasswordChangedAt(id: string): Promise<UserDocument | null> {
     return User.findById(id).select('+passwordChangedAt').exec();
   },

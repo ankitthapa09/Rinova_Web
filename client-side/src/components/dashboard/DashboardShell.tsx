@@ -136,9 +136,18 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
           <div className="mt-auto border-t border-line pt-5">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-medium text-[13px] text-night">
-                {initials(user.name)}
-              </span>
+              {user.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.profileImageUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-medium text-[13px] text-night">
+                  {initials(user.name)}
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] text-cream">{user.name}</span>
                 <span className="block truncate text-[11px] text-fog">{user.email}</span>

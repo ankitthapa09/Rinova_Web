@@ -1,13 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { BadgeCheck, CircleDashed, Pencil, Lock } from "lucide-react";
+import { useRef, useState } from "react";
+import { BadgeCheck, CircleDashed, Pencil, Lock, Camera } from "lucide-react";
 import { authApi, ApiError, type ApiUser } from "@/lib/api";
 import { useDashboardUser } from "@/components/dashboard/DashboardShell";
 import { toast } from "@/components/ui/toast";
 
 type Fields = { name: string; phone: string; address: string };
 type FieldErrors = Partial<Fields>;
+
+const AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const AVATAR_MAX_BYTES = 10 * 1024 * 1024;
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+}
 
 const inputClass =
   "w-full rounded-lg border border-line bg-night/40 px-4 py-2.5 text-[15px] text-cream outline-none transition-colors focus:border-accent";
@@ -41,6 +52,28 @@ export default function AccountCard() {
   // Email verification: idle → confirm prompt → sending.
   const [verifyStep, setVerifyStep] = useState<"idle" | "confirm">("idle");
   const [sending, setSending] = useState(false);
+
+  // Profile photo upload.
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // let the same file be re-picked after an error
+    if (!file) return;
+    if (!AVATAR_TYPES.includes(file.type)) return toast.error("Use a PNG, JPG, or WEBP image.");
+    if (file.size > AVATAR_MAX_BYTES) return toast.error("Image must be under 10 MB.");
+
+    setUploading(true);
+    try {
+      setProfile(await authApi.updateAvatar(file));
+      toast.success("Profile photo updated.");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't upload the photo. Try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const startEdit = () => {
     setForm({ name: profile.name, phone: profile.phone, address: profile.address });
@@ -98,8 +131,51 @@ export default function AccountCard() {
 
   return (
     <div data-dash-item className="rounded-2xl border border-line bg-surface/60 p-6">
+      {/* Profile photo */}
+      <div className="flex items-center gap-5 border-b border-line/60 pb-6">
+        <div className="relative shrink-0">
+          {profile.profileImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.profileImageUrl}
+              alt=""
+              className="h-20 w-20 rounded-full border border-line object-cover"
+            />
+          ) : (
+            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-accent text-2xl font-medium text-night">
+              {initials(profile.name)}
+            </span>
+          )}
+          {uploading ? (
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-night/60">
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-cream/30 border-t-cream" />
+            </span>
+          ) : null}
+        </div>
+
+        <div className="min-w-0">
+          <p className="truncate font-serif text-xl text-cream">{profile.name}</p>
+          <button
+            onClick={() => fileInput.current?.click()}
+            disabled={uploading}
+            className="mt-2 inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-[13px] text-cream transition-colors hover:border-cream/40 disabled:cursor-default disabled:opacity-60"
+          >
+            <Camera className="h-3.5 w-3.5" />
+            {uploading ? "Uploading…" : profile.profileImageUrl ? "Change photo" : "Upload photo"}
+          </button>
+          <p className="mt-2 text-[11px] text-fog">PNG, JPG, or WEBP — up to 10 MB.</p>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={onPickFile}
+            className="hidden"
+          />
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="mt-6 flex items-center justify-between">
         <h2 className="text-[11px] font-medium uppercase tracking-[0.18em] text-fog">
           Account Details
         </h2>

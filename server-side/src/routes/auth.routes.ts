@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authController } from '@/controllers/auth.controller';
 import { validate } from '@/middlewares/validate';
 import { requireAuth } from '@/middlewares/auth.middleware';
+import { uploadSingle } from '@/middlewares/upload';
 import { authLimiter, resetLimiter } from '@/middlewares/rateLimiter';
 import {
   registerSchema,
@@ -68,6 +69,8 @@ router.post('/refresh', authLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
 router.patch('/me', requireAuth, validate(updateProfileSchema), authController.updateMe);
+// Profile photo — multipart, image-only, streamed to Cloudinary by the service.
+router.post('/me/avatar', requireAuth, uploadSingle('file', 'image'), authController.updateAvatar);
 router.patch(
   '/me/password',
   authLimiter,

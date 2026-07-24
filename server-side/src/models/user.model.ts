@@ -39,6 +39,8 @@ export interface IUser {
   email: string;
   phone: string;
   address: string;
+  profileImageUrl?: string;
+  profileImagePublicId?: string;
   password: string;
   role: UserRole;
   isEmailVerified: boolean;
@@ -114,6 +116,13 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       trim: true,
       minlength: 3,
       maxlength: 120,
+    },
+    profileImageUrl: {
+      type: String,
+    },
+    profileImagePublicId: {
+      type: String,
+      select: false,
     },
     password: {
       type: String,
@@ -209,6 +218,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       // Strip sensitive/internal fields from any serialized user.
       transform(_doc, ret: Record<string, unknown>) {
         delete ret.password;
+        delete ret.profileImagePublicId;
         delete ret.passwordResetToken;
         delete ret.passwordResetExpires;
         delete ret.passwordChangedAt;

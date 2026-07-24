@@ -144,6 +144,13 @@ export const authController = {
     res.status(200).json({ success: true, data: { user } });
   }),
 
+  // Requires requireAuth + uploadSingle('file', 'image') before it in the chain.
+  updateAvatar: catchAsync(async (req: Request, res: Response) => {
+    if (!req.file) throw AppError.badRequest('No image was uploaded');
+    const user = await authService.updateProfileImage(req.user!.sub, req.file.buffer);
+    res.status(200).json({ success: true, data: { user } });
+  }),
+
   // Requires requireAuth before it in the chain.
   changeMyPassword: catchAsync(async (req: Request, res: Response) => {
     const tokens = await authService.changePassword(req.user!.sub, req.body, {

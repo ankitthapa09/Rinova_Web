@@ -3,6 +3,7 @@ import { userRepository } from '@/repositories/user.repository';
 import { tokenService, type TokenPair } from '@/services/token.service';
 import { totpService } from '@/services/totp.service';
 import { emailService } from '@/services/email.service';
+import { uploadService } from '@/services/upload.service';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 import { env } from '@/config/env';
@@ -386,6 +387,24 @@ export const authService = {
     const user = await userRepository.updateProfile(userId, input);
     if (!user) throw AppError.unauthorized('Account no longer exists');
     logger.info('profile updated', { userId: user.id });
+    return user;
+  },
+
+  /** Uploads a new profile photo to Cloudinary and swaps it in, deleting the old one. */
+  async updateProfileImage(userId: string, buffer: Buffer): Promise<UserDocument> {
+    const current = await userRepository.findByIdWithImageId(userId);
+    if (!current) throw AppError.unauthorized('Account no longer exists');
+
+    const { url, publicId } = await uploadService.uploadAvatar(buffer);
+    const oldPublicId = current.profileImagePublicId;
+
+    const user = await userRepository.setProfileImage(userId, url, publicId);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+
+    // Remove the previous photo only after the new one is safely saved.
+    if (oldPublicId) await uploadService.destroy(oldPublicId);
+
+    logger.info('profile image updated', { userId: user.id });
     return user;
   },
 

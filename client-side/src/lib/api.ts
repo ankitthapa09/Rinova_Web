@@ -9,6 +9,7 @@ export interface ApiUser {
   role: "user" | "admin";
   isEmailVerified: boolean;
   twoFactorEnabled: boolean;
+  profileImageUrl?: string;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -209,6 +210,32 @@ export const authApi = {
       body: JSON.stringify(input),
     });
     return user;
+  },
+
+  /** Uploads a new profile photo (multipart — not the JSON `request` helper). */
+  async updateAvatar(file: File): Promise<ApiUser> {
+    const form = new FormData();
+    form.append("file", file);
+
+    let res: Response;
+    try {
+      // No Content-Type header — the browser sets the multipart boundary itself.
+      res = await fetch(`${BASE_URL}/auth/me/avatar`, {
+        method: "POST",
+        credentials: "include",
+        headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+        body: form,
+      });
+    } catch {
+      throw new ApiError(0, "Can't reach the server. Is it running?");
+    }
+
+    const json = (await res.json().catch(() => null)) as ServerEnvelope<{ user: ApiUser }> | null;
+    if (!res.ok || !json?.success) {
+      const fieldErrors = Object.fromEntries((json?.errors ?? []).map((e) => [e.field, e.message]));
+      throw new ApiError(res.status, json?.message ?? "Upload failed", fieldErrors);
+    }
+    return json.data.user;
   },
 
   /** Changes the signed-in user's password and rotates auth tokens. */
