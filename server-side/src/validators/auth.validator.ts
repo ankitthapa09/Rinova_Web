@@ -62,6 +62,11 @@ export const resetPasswordSchema = z.object({
   password: passwordRule,
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string({ error: 'Current password is required' }).min(1, 'Enter your current password'),
+  newPassword: passwordRule,
+});
+
 export const verifyEmailSchema = z.object({
   token: z
     .string({ error: 'Verification token is missing' })
@@ -91,3 +96,4 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

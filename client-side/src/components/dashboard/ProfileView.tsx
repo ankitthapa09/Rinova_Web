@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import AccountCard from "@/components/dashboard/AccountCard";
+import ChangePasswordCard from "@/components/dashboard/ChangePasswordCard";
 import TwoFactorCard from "@/components/dashboard/TwoFactorCard";
 
 export default function ProfileView() {
@@ -41,6 +42,11 @@ export default function ProfileView() {
       {/* Two-factor authentication */}
       <section className="mt-4">
         <TwoFactorCard />
+      </section>
+
+      {/* Signed-in password change */}
+      <section className="mt-4">
+        <ChangePasswordCard />
       </section>
     </div>
   );

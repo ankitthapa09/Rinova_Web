@@ -144,6 +144,22 @@ export const authController = {
     res.status(200).json({ success: true, data: { user } });
   }),
 
+  // Requires requireAuth before it in the chain.
+  changeMyPassword: catchAsync(async (req: Request, res: Response) => {
+    const tokens = await authService.changePassword(req.user!.sub, req.body, {
+      userAgent: req.get('user-agent'),
+    });
+
+    res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
+    res.status(200).json({
+      success: true,
+      data: {
+        accessToken: tokens.accessToken,
+        message: 'Password changed successfully.',
+      },
+    });
+  }),
+
   // ── 2FA management (all requireAuth) ──────────────────────
   startTwoFactor: catchAsync(async (req: Request, res: Response) => {
     const data = await authService.startTwoFactorSetup(req.user!.sub);

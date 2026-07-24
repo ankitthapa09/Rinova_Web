@@ -8,6 +8,7 @@ import {
   loginSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
   verifyEmailSchema,
   twoFactorLoginSchema,
   twoFactorCodeSchema,
@@ -67,5 +68,12 @@ router.post('/refresh', authLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
 router.patch('/me', requireAuth, validate(updateProfileSchema), authController.updateMe);
+router.patch(
+  '/me/password',
+  authLimiter,
+  requireAuth,
+  validate(changePasswordSchema),
+  authController.changeMyPassword,
+);
 
 export default router;

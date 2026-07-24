@@ -211,6 +211,17 @@ export const authApi = {
     return user;
   },
 
+  /** Changes the signed-in user's password and rotates auth tokens. */
+  async changePassword(currentPassword: string, newPassword: string): Promise<string> {
+    const data = await request<{ message: string; accessToken: string }>("/auth/me/password", {
+      method: "PATCH",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    accessToken = data.accessToken;
+    setSessionHint(true);
+    return data.message;
+  },
+
   /** Requests a reset link — the server never says whether the email exists. */
   async forgotPassword(email: string, captchaToken?: string): Promise<string> {
     const { message } = await request<{ message: string }>("/auth/forgot-password", {

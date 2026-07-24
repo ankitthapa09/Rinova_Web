@@ -13,7 +13,12 @@ import {
   PASSWORD_HISTORY_LIMIT,
   type UserDocument,
 } from '@/models/user.model';
-import type { RegisterInput, LoginInput, UpdateProfileInput } from '@/validators/auth.validator';
+import type {
+  RegisterInput,
+  LoginInput,
+  UpdateProfileInput,
+  ChangePasswordInput,
+} from '@/validators/auth.validator';
 
 export interface AuthResult {
   user: UserDocument;
@@ -382,6 +387,35 @@ export const authService = {
     if (!user) throw AppError.unauthorized('Account no longer exists');
     logger.info('profile updated', { userId: user.id });
     return user;
+  },
+
+  /** Signed-in password change with current-password proof. Rotates the session. */
+  async changePassword(
+    userId: string,
+    input: ChangePasswordInput,
+    context?: AuthContext,
+  ): Promise<TokenPair> {
+    const user = await userRepository.findByIdWithPasswordSecurity(userId);
+    if (!user) throw AppError.unauthorized('Account no longer exists');
+
+    if (!(await user.comparePassword(input.currentPassword))) {
+      throw AppError.badRequest('Current password is incorrect');
+    }
+
+    if (await user.isPasswordReused(input.newPassword)) {
+      throw AppError.badRequest('New password must differ from your recent passwords');
+    }
+
+    user.passwordHistory = [user.password, ...(user.passwordHistory ?? [])].slice(
+      0,
+      PASSWORD_HISTORY_LIMIT,
+    );
+    user.password = input.newPassword;
+    await user.save();
+
+    await userRepository.clearAllSessions(user.id);
+    logger.info('password changed', { userId: user.id });
+    return issueSession(user, context);
   },
 
   /** Step 2 — set the new password with the emailed token. Single-use. */

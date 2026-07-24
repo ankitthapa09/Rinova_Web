@@ -70,6 +70,10 @@ export const userRepository = {
     return User.findById(id).select('+passwordChangedAt +refreshSessions').exec();
   },
 
+  findByIdWithPasswordSecurity(id: string): Promise<UserDocument | null> {
+    return User.findById(id).select('+password +passwordHistory +refreshSessions').exec();
+  },
+
   /** Loads the 2FA secrets — never selected by default. */
   findByIdWith2FA(id: string): Promise<UserDocument | null> {
     return User.findById(id)
