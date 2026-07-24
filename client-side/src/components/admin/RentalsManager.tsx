@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, X, Loader2, AlertCircle } from "lucide-react";
 import { bookingApi, type Booking, type BookingStatus, type BookingUser } from "@/lib/bookingApi";
 import { formatNpr } from "@/lib/vehicleApi";
 import { ApiError } from "@/lib/api";
 import { useFocusItem } from "@/lib/useFocusItem";
 import { toast } from "@/components/ui/toast";
+import BookingDetailDrawer from "@/components/admin/BookingDetailDrawer";
 
 const STATUS_STYLES: Record<BookingStatus, string> = {
   pending: "border border-line text-fog",
@@ -31,7 +32,22 @@ export default function RentalsManager() {
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const autoOpened = useRef(false);
   useFocusItem(bookings);
+
+  // The drawer reads the live booking by id, so it reflects status changes.
+  const selected = bookings?.find((b) => b._id === selectedId) ?? null;
+
+  // A notification deep-link (?focus=<id>) opens that booking's drawer once.
+  useEffect(() => {
+    if (!bookings || autoOpened.current) return;
+    const focus = new URLSearchParams(window.location.search).get("focus");
+    if (focus && bookings.some((b) => b._id === focus)) {
+      setSelectedId(focus);
+      autoOpened.current = true;
+    }
+  }, [bookings]);
 
   const reload = useCallback(async () => {
     try {
@@ -111,7 +127,16 @@ export default function RentalsManager() {
                 <li
                   key={b._id}
                   id={`item-${b._id}`}
-                  className="flex scroll-mt-28 items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4 transition duration-500 data-[focus=true]:ring-2 data-[focus=true]:ring-accent"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedId(b._id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedId(b._id);
+                    }
+                  }}
+                  className="flex cursor-pointer scroll-mt-28 items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4 transition duration-500 hover:border-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent data-[focus=true]:ring-2 data-[focus=true]:ring-accent"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -140,7 +165,10 @@ export default function RentalsManager() {
                   {b.status === "pending" ? (
                     <div className="flex shrink-0 items-center gap-2">
                       <button
-                        onClick={() => resolve(b, "confirmed")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          resolve(b, "confirmed");
+                        }}
                         disabled={rowBusy}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12px] font-medium text-night transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
@@ -148,7 +176,10 @@ export default function RentalsManager() {
                         Approve
                       </button>
                       <button
-                        onClick={() => resolve(b, "declined")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          resolve(b, "declined");
+                        }}
                         disabled={rowBusy}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[12px] text-fog transition-colors hover:text-red-400 disabled:opacity-50"
                       >
@@ -162,6 +193,13 @@ export default function RentalsManager() {
           </ul>
         )}
       </div>
+
+      <BookingDetailDrawer
+        booking={selected}
+        busy={busyId === selectedId}
+        onClose={() => setSelectedId(null)}
+        onResolve={(status) => selected && resolve(selected, status)}
+      />
     </div>
   );
 }

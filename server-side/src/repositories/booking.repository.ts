@@ -10,8 +10,9 @@ export type CreateBookingData = Pick<
 
 /** What list views need from the joined records — never more (no password,
  *  no address, no full vehicle document). */
-const USER_FIELDS = 'name email phone';
-const VEHICLE_FIELDS = 'name slug imageUrl pricePerDay category';
+// Enough for the admin booking drawer: full contact + the vehicle's specs.
+const USER_FIELDS = 'name email phone address isEmailVerified createdAt';
+const VEHICLE_FIELDS = 'name slug imageUrl pricePerDay category tagline specs';
 
 export const bookingRepository = {
   create(data: CreateBookingData): Promise<BookingDocument> {
