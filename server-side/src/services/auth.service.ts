@@ -138,10 +138,12 @@ export const authService = {
 
     // checked first, so a locked account never confirms the right password
     if (user?.lockUntil && user.lockUntil.getTime() > Date.now()) {
-      const minutes = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60_000);
+      const seconds = Math.ceil((user.lockUntil.getTime() - Date.now()) / 1000);
+      const minutes = Math.ceil(seconds / 60);
       logger.warn('login attempt on locked account', { userId: user.id });
-      throw AppError.tooMany(
-        `Too many failed attempts. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}`,
+      throw AppError.locked(
+        `Your account is locked for ${minutes} minute${minutes === 1 ? '' : 's'}. Try again after that.`,
+        seconds,
       );
     }
 
@@ -152,6 +154,12 @@ export const authService = {
         if (failures >= MAX_LOGIN_ATTEMPTS) {
           await userRepository.lockAccount(user.id, new Date(Date.now() + ACCOUNT_LOCK_MS));
           logger.warn('account locked after repeated failures', { userId: user.id });
+          // Tell them straight away on the attempt that trips the lock.
+          const seconds = Math.ceil(ACCOUNT_LOCK_MS / 1000);
+          throw AppError.locked(
+            `Your account is locked for ${Math.ceil(seconds / 60)} minutes. Try again after that.`,
+            seconds,
+          );
         }
       }
       logger.warn('failed login attempt', { email: input.email });

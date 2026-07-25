@@ -26,9 +26,16 @@ async function safe(label: string, fn: () => Promise<void>): Promise<void> {
 }
 
 export const notificationService = {
-  // ── Queries the bell reads ────────────────────────────────
-  listMine(userId: string, limit?: number): Promise<NotificationDocument[]> {
-    return notificationRepository.findByRecipient(userId, limit);
+  // ── Queries the bell + page read ──────────────────────────
+  async listMine(
+    userId: string,
+    opts: { limit?: number; skip?: number } = {},
+  ): Promise<{ notifications: NotificationDocument[]; total: number }> {
+    const [notifications, total] = await Promise.all([
+      notificationRepository.findByRecipient(userId, opts.limit, opts.skip),
+      notificationRepository.countByRecipient(userId),
+    ]);
+    return { notifications, total };
   },
 
   unreadCount(userId: string): Promise<number> {
@@ -45,6 +52,13 @@ export const notificationService = {
 
   markAllRead(userId: string): Promise<number> {
     return notificationRepository.markAllRead(userId);
+  },
+
+  /** Deletes one of the user's own notifications (owner-scoped). */
+  async remove(id: string, userId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(id)) throw AppError.notFound('Notification not found');
+    const deleted = await notificationRepository.deleteOwned(id, userId);
+    if (!deleted) throw AppError.notFound('Notification not found');
   },
 
   // ── Rental lifecycle ──────────────────────────────────────

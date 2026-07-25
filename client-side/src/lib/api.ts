@@ -19,11 +19,19 @@ export interface ApiUser {
 export class ApiError extends Error {
   status: number;
   fieldErrors: Record<string, string>;
+  /** Seconds to wait before retrying — set on lockout (423) / rate-limit (429). */
+  retryAfter?: number;
 
-  constructor(status: number, message: string, fieldErrors: Record<string, string> = {}) {
+  constructor(
+    status: number,
+    message: string,
+    fieldErrors: Record<string, string> = {},
+    retryAfter?: number,
+  ) {
     super(message);
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -56,6 +64,14 @@ interface ServerEnvelope<T> {
   data: T;
   message?: string;
   errors?: { field: string; message: string }[];
+  retryAfter?: number;
+}
+
+/** Prefer the body's retryAfter, fall back to the standard Retry-After header. */
+function readRetryAfter(res: Response, body: { retryAfter?: number } | null): number | undefined {
+  if (typeof body?.retryAfter === "number") return body.retryAfter;
+  const header = Number(res.headers.get("Retry-After"));
+  return Number.isFinite(header) && header > 0 ? header : undefined;
 }
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -81,7 +97,12 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     const fieldErrors = Object.fromEntries(
       (json?.errors ?? []).map((e) => [e.field, e.message]),
     );
-    throw new ApiError(res.status, json?.message ?? "Something went wrong", fieldErrors);
+    throw new ApiError(
+      res.status,
+      json?.message ?? "Something went wrong",
+      fieldErrors,
+      readRetryAfter(res, json),
+    );
   }
 
   return json.data;

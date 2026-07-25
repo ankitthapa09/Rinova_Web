@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function AdminNotificationsPage() {
-  return <NotificationsView />;
+  return <NotificationsView allowDelete />;
 }

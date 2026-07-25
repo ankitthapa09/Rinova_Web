@@ -22,10 +22,24 @@ export interface AppNotification {
   createdAt: string;
 }
 
+export interface NotificationList {
+  notifications: AppNotification[];
+  unreadCount: number;
+  /** Total the user has — used to compute page count. */
+  total: number;
+}
+
 export const notificationApi = {
-  list(limit?: number): Promise<{ notifications: AppNotification[]; unreadCount: number }> {
-    const query = limit ? `?limit=${limit}` : "";
-    return request<{ notifications: AppNotification[]; unreadCount: number }>(`/notifications${query}`);
+  list(opts: { limit?: number; page?: number } = {}): Promise<NotificationList> {
+    const q = new URLSearchParams();
+    if (opts.limit) q.set("limit", String(opts.limit));
+    if (opts.page) q.set("page", String(opts.page));
+    const qs = q.toString();
+    return request<NotificationList>(`/notifications${qs ? `?${qs}` : ""}`);
+  },
+
+  async remove(id: string): Promise<void> {
+    await request(`/notifications/${id}`, { method: "DELETE" });
   },
 
   async unreadCount(): Promise<number> {

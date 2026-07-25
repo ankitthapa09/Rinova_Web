@@ -34,6 +34,9 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
     captcha?: string;
   }>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  // Account lockout: server hands back how long to wait; we count it down here.
+  const [lockUntil, setLockUntil] = useState<number | null>(null);
+  const [lockRemaining, setLockRemaining] = useState(0);
   // Already signed in (e.g. arrived here with the back button)? Don't show the
   // form — send them where they belong. Passive: no network call for guests.
   const { user: session, loading: sessionLoading } = useAuth(true);
@@ -42,6 +45,22 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
     if (sessionLoading || !session) return;
     router.replace(session.role === "admin" ? "/admin" : "/dashboard");
   }, [sessionLoading, session, router]);
+
+  useEffect(() => {
+    if (!lockUntil) return;
+    const tick = () => {
+      const rem = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (rem <= 0) {
+        setLockUntil(null);
+        setLockRemaining(0);
+      } else {
+        setLockRemaining(rem);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [lockUntil]);
 
   const shake = () => {
     if (!formRef.current || !window.matchMedia(MOTION_OK).matches) return;
@@ -64,6 +83,8 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
   const onError = (err: unknown) => {
     setStatus("idle");
     if (err instanceof ApiError) {
+      // Lockout (423) / rate-limit (429) tell us how long to disable the button.
+      if (err.retryAfter) setLockUntil(Date.now() + err.retryAfter * 1000);
       setErrors({
         ...err.fieldErrors,
         captcha: err.fieldErrors.captchaToken,
@@ -77,7 +98,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (status !== "idle") return;
+    if (status !== "idle" || lockRemaining > 0) return;
 
     // ── Step two: a 2FA code is expected ──────────────────
     if (challengeToken) {
@@ -133,7 +154,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
   // ── Second step: authenticator / recovery code ──────────
   if (challengeToken) {
     return (
-      <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-7">
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
         <div data-auth-item>
           <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-accent">
             Two-step verification
@@ -179,7 +200,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
 
   // ── First step: credentials ─────────────────────────────
   return (
-    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-7">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
       <FloatingInput
         id="email"
         label="Email"
@@ -221,7 +242,12 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
       </div>
 
       <div data-auth-item className="mt-2">
-        <MagneticSubmit status={status} successLabel="Welcome back">
+        <MagneticSubmit
+          status={status}
+          successLabel="Welcome back"
+          locked={lockRemaining > 0}
+          lockedLabel={`Locked · ${Math.floor(lockRemaining / 60)}:${String(lockRemaining % 60).padStart(2, "0")}`}
+        >
           Sign In
         </MagneticSubmit>
       </div>

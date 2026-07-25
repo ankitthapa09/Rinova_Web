@@ -109,5 +109,6 @@ export default function CaptchaWidget({
     );
   }
 
-  return <div ref={containerRef} />;
+  // Reserve the widget's height so the form doesn't jump when it finishes loading.
+  return <div ref={containerRef} className="min-h-[65px]" />;
 }

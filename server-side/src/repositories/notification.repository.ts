@@ -16,8 +16,8 @@ export interface NewNotification {
 }
 
 // Newest first; the caller picks how many (the bell wants a few, the full
-// page many), and this hard ceiling keeps any single payload bounded.
-const DEFAULT_LIMIT = 30;
+// page a page-worth), and this hard ceiling keeps any single payload bounded.
+export const DEFAULT_LIMIT = 30;
 export const MAX_LIMIT = 100;
 
 export const notificationRepository = {
@@ -33,12 +33,30 @@ export const notificationRepository = {
     );
   },
 
-  findByRecipient(userId: string, limit: number = DEFAULT_LIMIT): Promise<NotificationDocument[]> {
-    return Notification.find({ recipient: userId }).sort({ createdAt: -1 }).limit(limit).exec();
+  findByRecipient(
+    userId: string,
+    limit: number = DEFAULT_LIMIT,
+    skip = 0,
+  ): Promise<NotificationDocument[]> {
+    return Notification.find({ recipient: userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec();
+  },
+
+  /** Total notifications for a user — drives the page count. */
+  countByRecipient(userId: string): Promise<number> {
+    return Notification.countDocuments({ recipient: userId }).exec();
   },
 
   countUnread(userId: string): Promise<number> {
     return Notification.countDocuments({ recipient: userId, read: false }).exec();
+  },
+
+  /** Owner-scoped delete — returns null if it isn't theirs (or doesn't exist). */
+  deleteOwned(id: string, userId: string): Promise<NotificationDocument | null> {
+    return Notification.findOneAndDelete({ _id: id, recipient: userId }).exec();
   },
 
   // Scoped to the owner — you can't read (or probe) someone else's notification.

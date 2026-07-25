@@ -1,37 +1,45 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Check } from "lucide-react";
+import { Bell, Check, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
 import { notificationApi, type AppNotification } from "@/lib/notificationApi";
 import { NotificationIcon, timeAgo } from "@/components/notifications/notificationDisplay";
+import { toast } from "@/components/ui/toast";
 
-// The full page pulls the lot (server clamps to its own ceiling).
-const PAGE_LIMIT = 100;
+const PAGE_SIZE = 12;
 
-export default function NotificationsView() {
+/** allowDelete is passed for customers; admins keep an unremovable activity log. */
+export default function NotificationsView({ allowDelete = false }: { allowDelete?: boolean }) {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<AppNotification[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await notificationApi.list(PAGE_LIMIT);
-        if (!cancelled) setItems(data.notifications);
-      } catch {
-        if (!cancelled) setItems([]);
-      } finally {
-        if (!cancelled) setLoading(false);
+  const load = useCallback(async (p: number, silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await notificationApi.list({ limit: PAGE_SIZE, page: p });
+      // Deleting the last item on a page can leave it empty — step back one.
+      if (data.notifications.length === 0 && p > 1) {
+        setPage(p - 1);
+        return;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      setItems(data.notifications);
+      setTotal(data.total);
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load(page);
+  }, [page, load]);
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -46,6 +54,7 @@ export default function NotificationsView() {
     return () => mm.revert();
   }, [items]);
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasUnread = items.some((n) => !n.read);
 
   const onItemClick = (n: AppNotification) => {
@@ -59,6 +68,17 @@ export default function NotificationsView() {
   const markAll = () => {
     setItems((prev) => prev.map((x) => ({ ...x, read: true })));
     notificationApi.markAllRead().catch(() => {});
+  };
+
+  const onDelete = async (id: string) => {
+    setItems((prev) => prev.filter((n) => n._id !== id));
+    setTotal((t) => Math.max(0, t - 1));
+    try {
+      await notificationApi.remove(id);
+    } catch {
+      toast.error("Couldn't delete that notification.");
+    }
+    load(page, true); // backfill from the next page (or step back if now empty)
   };
 
   return (
@@ -95,32 +115,68 @@ export default function NotificationsView() {
             </p>
           </div>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {items.map((n) => (
-              <li key={n._id} data-dash-item>
-                <button
-                  onClick={() => onItemClick(n)}
-                  className={`flex w-full gap-4 rounded-xl border px-5 py-4 text-left transition-colors ${
-                    n.read
-                      ? "border-line bg-surface/40 hover:bg-surface/70"
-                      : "border-accent/25 bg-surface/70 hover:bg-surface"
+          <>
+            <ul className="flex flex-col gap-2">
+              {items.map((n) => (
+                <li
+                  key={n._id}
+                  data-dash-item
+                  className={`flex items-stretch overflow-hidden rounded-xl border transition-colors ${
+                    n.read ? "border-line bg-surface/40" : "border-accent/25 bg-surface/70"
                   }`}
                 >
-                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-night/50">
-                    <NotificationIcon type={n.type} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-3">
-                      <span className="truncate text-[14px] font-medium text-cream">{n.title}</span>
-                      <span className="shrink-0 text-[11px] text-fog">{timeAgo(n.createdAt)}</span>
+                  <button
+                    onClick={() => onItemClick(n)}
+                    className="flex flex-1 gap-4 px-5 py-4 text-left transition-colors hover:bg-night/20"
+                  >
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-night/50">
+                      <NotificationIcon type={n.type} />
                     </span>
-                    <span className="mt-1 block text-[13px] leading-snug text-fog">{n.message}</span>
-                  </span>
-                  {!n.read ? <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" /> : null}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="truncate text-[14px] font-medium text-cream">{n.title}</span>
+                        <span className="shrink-0 text-[11px] text-fog">{timeAgo(n.createdAt)}</span>
+                      </span>
+                      <span className="mt-1 block text-[13px] leading-snug text-fog">{n.message}</span>
+                    </span>
+                    {!n.read ? <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-accent" /> : null}
+                  </button>
+
+                  {allowDelete ? (
+                    <button
+                      onClick={() => onDelete(n._id)}
+                      aria-label="Delete notification"
+                      className="flex shrink-0 items-center border-l border-line/60 px-4 text-fog transition-colors hover:bg-night/20 hover:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+
+            {totalPages > 1 ? (
+              <div className="mt-6 flex items-center justify-between">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-[13px] text-cream transition-colors hover:border-cream/40 disabled:cursor-default disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Prev
                 </button>
-              </li>
-            ))}
-          </ul>
+                <span className="text-[13px] text-fog">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-[13px] text-cream transition-colors hover:border-cream/40 disabled:cursor-default disabled:opacity-40"
+                >
+                  Next <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </div>

@@ -7,5 +7,6 @@ export const metadata: Metadata = {
 };
 
 export default function NotificationsPage() {
-  return <NotificationsView />;
+  // Customers can delete their own notifications; admins can't (see admin page).
+  return <NotificationsView allowDelete />;
 }

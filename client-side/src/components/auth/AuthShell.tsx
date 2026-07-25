@@ -32,11 +32,6 @@ interface AuthShellProps {
   children: ReactNode;
 }
 
-/**
- * Split-screen auth chrome: form column on the left, 3D vehicle stage with
- * an outlined watermark on the right. Owns the entrance choreography —
- * char-cascade headline, staggered form rows, stage fade, divider draw.
- */
 export default function AuthShell({
   eyebrow,
   title,
@@ -103,10 +98,11 @@ export default function AuthShell({
     <div ref={rootRef} className="relative min-h-[100svh] lg:grid lg:grid-cols-[minmax(0,46%)_1fr]">
       <Cursor />
 
-      {/* ── Form column ─────────────────────────────────────── */}
+      
       <div className="relative flex min-h-[100svh] flex-col px-6 py-8 sm:px-12 lg:px-14 xl:px-20">
-        {/* Ambient pool behind the form on small screens */}
-        <div aria-hidden className="glow-orb absolute -left-[30%] top-[55%] h-[80vw] w-[80vw] opacity-50 lg:opacity-30" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="glow-orb absolute -left-[30%] top-[55%] h-[80vw] w-[80vw] opacity-50 lg:opacity-30" />
+        </div>
 
         <div data-auth-top className="relative z-10 flex items-center justify-between">
           <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
@@ -121,26 +117,30 @@ export default function AuthShell({
           </Link>
         </div>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center py-14">
-          <p data-auth-eyebrow className="mb-6 text-[11px] font-medium uppercase tracking-[0.25em] text-fog">
+        <div className="relative z-10 mx-auto my-auto w-full max-w-[460px] py-6">
+          <p data-auth-eyebrow className="mb-5 text-[11px] font-medium uppercase tracking-[0.25em] text-fog">
             {eyebrow}
           </p>
 
-          <h1 className="mb-5 font-serif text-[clamp(2.9rem,5.5vw,4.4rem)] leading-[1.02] tracking-[-0.02em] text-cream">
-            {title.map((line, i) => (
-              <span key={i} className="split-line" aria-label={line.text}>
-                <SplitChars text={line.text} className={line.accent ? "italic text-accent" : ""} />
-              </span>
-            ))}
+          <h1 className="mb-4 font-serif text-[clamp(2.5rem,4vw,3.4rem)] leading-[1.03] tracking-[-0.025em] text-cream">
+            {/* One line: segments flow inline, the accent word stays coloured. */}
+            <span className="split-line" aria-label={title.map((l) => l.text).join(" ")}>
+              {title.map((line, i) => (
+                <span key={i}>
+                  {i > 0 ? <span aria-hidden>&nbsp;</span> : null}
+                  <SplitChars text={line.text} className={line.accent ? "italic text-accent" : ""} />
+                </span>
+              ))}
+            </span>
           </h1>
 
-          <p data-auth-sub className="mb-10 text-[15px] leading-relaxed text-fog">
+          <p data-auth-sub className="mb-6 text-[15px] leading-relaxed text-fog">
             {subtitle}
           </p>
 
           {children}
 
-          <p data-auth-item className="mt-9 text-sm text-fog">
+          <p data-auth-item className="mt-7 text-sm text-fog">
             {switchPrompt}{" "}
             <Link href={switchHref} className="nav-link font-medium text-cream hover:text-accent">
               {switchLabel}
@@ -149,8 +149,7 @@ export default function AuthShell({
         </div>
       </div>
 
-      {/* ── 3D stage panel ──────────────────────────────────── */}
-      <div className="relative hidden overflow-hidden lg:block">
+      <div className="relative hidden overflow-hidden lg:sticky lg:top-0 lg:block lg:h-[100svh] lg:self-start">
         <div
           data-auth-divider
           aria-hidden

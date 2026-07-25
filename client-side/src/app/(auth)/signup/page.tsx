@@ -14,7 +14,7 @@ export default function SignupPage() {
     <AuthShell
       eyebrow="Join the Club"
       title={[{ text: "Join the" }, { text: "garage.", accent: true }]}
-      subtitle="One account for rentals and washes — book a ride or a detail in under a minute."
+      subtitle="One account for rentals and washes. Book a ride or a detail in under a minute."
       watermark="MEMBER"
       vehicleUrl="/models/suv.glb"
       vehicleLength={3.9}

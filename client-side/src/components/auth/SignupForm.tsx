@@ -92,7 +92,7 @@ export default function SignupForm({ siteKey }: SignupFormProps) {
         phone: fields.phone,
         address: fields.address.trim(),
         password: fields.password,
-        captchaToken,
+        captchaToken: captchaToken ?? undefined,
       });
       setStatus("success");
       toast.success(`Welcome to the garage, ${user.name.split(" ")[0]}.`);
@@ -116,7 +116,7 @@ export default function SignupForm({ siteKey }: SignupFormProps) {
   };
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
       <FloatingInput
         id="name"
         label="Full name"

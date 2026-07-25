@@ -14,7 +14,7 @@ export default function LoginPage() {
     <AuthShell
       eyebrow="Members Garage"
       title={[{ text: "Welcome" }, { text: "back.", accent: true }]}
-      subtitle="Sign in to manage your bookings, washes, and rentals — the garage kept your spot."
+      subtitle="Sign in to manage your bookings, washes, and rentals. The garage kept your spot."
       watermark="GARAGE"
       vehicleUrl="/models/car.glb"
       vehicleLength={4.0}

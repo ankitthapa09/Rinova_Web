@@ -12,7 +12,7 @@ export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 /** How many previous passwords a new one may not repeat. */
 export const PASSWORD_HISTORY_LIMIT = 5;
 /** Failed logins before the account locks, and for how long. */
-export const MAX_LOGIN_ATTEMPTS = 5;
+export const MAX_LOGIN_ATTEMPTS = 12;
 export const ACCOUNT_LOCK_MS = 15 * 60 * 1000;
 /** Max sessions kept per user; oldest is evicted past this. */
 export const MAX_SESSIONS = 10;

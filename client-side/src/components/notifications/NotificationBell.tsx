@@ -45,7 +45,7 @@ export default function NotificationBell({ viewAllHref = "/dashboard/notificatio
     setOpen(true);
     setLoading(true);
     try {
-      const data = await notificationApi.list(DROPDOWN_LIMIT);
+      const data = await notificationApi.list({ limit: DROPDOWN_LIMIT });
       setItems(data.notifications);
       setUnread(data.unreadCount);
     } catch {

@@ -3,7 +3,7 @@ import { authController } from '@/controllers/auth.controller';
 import { validate } from '@/middlewares/validate';
 import { requireAuth } from '@/middlewares/auth.middleware';
 import { uploadSingle } from '@/middlewares/upload';
-import { authLimiter, resetLimiter } from '@/middlewares/rateLimiter';
+import { authLimiter, loginLimiter, resetLimiter } from '@/middlewares/rateLimiter';
 import {
   registerSchema,
   loginSchema,
@@ -20,7 +20,7 @@ const router = Router();
 
 // Credential endpoints get the strict limiter (failed attempts only)
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
-router.post('/login', authLimiter, validate(loginSchema), authController.login);
+router.post('/login', loginLimiter, validate(loginSchema), authController.login);
 // Second login step — limited too, so a 6-digit code can't be brute-forced.
 router.post(
   '/login/2fa',

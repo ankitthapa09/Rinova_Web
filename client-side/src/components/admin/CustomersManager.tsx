@@ -5,6 +5,7 @@ import { Trash2, Loader2, AlertCircle, BadgeCheck, CircleDashed, ShieldCheck } f
 import { userApi } from "@/lib/userApi";
 import { ApiError, type ApiUser } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
+import CustomerDetailDrawer from "@/components/admin/CustomerDetailDrawer";
 
 function initials(name: string): string {
   return name
@@ -23,6 +24,9 @@ export default function CustomersManager() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const selected = users?.find((u) => u._id === selectedId) ?? null;
 
   const reload = useCallback(async () => {
     try {
@@ -90,11 +94,25 @@ export default function CustomersManager() {
               return (
                 <li
                   key={u._id}
-                  className="flex items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedId(u._id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedId(u._id);
+                    }
+                  }}
+                  className="flex cursor-pointer items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4 transition-colors hover:border-accent/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/12 font-medium text-[13px] text-accent">
-                    {initials(u.name)}
-                  </span>
+                  {u.profileImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={u.profileImageUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/12 font-medium text-[13px] text-accent">
+                      {initials(u.name)}
+                    </span>
+                  )}
 
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 truncate text-[14.5px] text-cream">
@@ -131,14 +149,20 @@ export default function CustomersManager() {
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="text-[12px] text-fog">Delete?</span>
                       <button
-                        onClick={() => remove(u)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          remove(u);
+                        }}
                         disabled={rowBusy}
                         className="rounded-md bg-red-500/90 px-2.5 py-1 text-[12px] font-medium text-white disabled:opacity-60"
                       >
                         {rowBusy ? "…" : "Yes"}
                       </button>
                       <button
-                        onClick={() => setConfirmId(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmId(null);
+                        }}
                         disabled={rowBusy}
                         className="rounded-md px-2 py-1 text-[12px] text-fog hover:text-cream"
                       >
@@ -149,7 +173,10 @@ export default function CustomersManager() {
                     <button
                       title="Delete account"
                       aria-label={`Delete ${u.name}`}
-                      onClick={() => setConfirmId(u._id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmId(u._id);
+                      }}
                       disabled={rowBusy}
                       className="shrink-0 rounded-lg p-2 text-fog transition-colors hover:text-red-400 disabled:opacity-40"
                     >
@@ -162,6 +189,8 @@ export default function CustomersManager() {
           </ul>
         )}
       </div>
+
+      <CustomerDetailDrawer customer={selected} onClose={() => setSelectedId(null)} />
     </div>
   );
 }

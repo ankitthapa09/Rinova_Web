@@ -11,7 +11,12 @@ export function notFoundHandler(req: Request, res: Response): void {
 // anything unexpected is logged with its stack and hidden behind a generic 500.
 export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
   if (err instanceof AppError && err.isOperational) {
-    res.status(err.statusCode).json({ success: false, message: err.message });
+    if (err.retryAfterSeconds) res.set('Retry-After', String(err.retryAfterSeconds));
+    res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      ...(err.retryAfterSeconds ? { retryAfter: err.retryAfterSeconds } : {}),
+    });
     return;
   }
 
