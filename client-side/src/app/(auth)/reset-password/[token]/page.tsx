@@ -3,7 +3,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 
 export const metadata: Metadata = {
-  title: "Reset Password — Rinova",
+  title: "Reset Password | Rinova",
   description: "Set a new password for your Rinova account.",
 };
 

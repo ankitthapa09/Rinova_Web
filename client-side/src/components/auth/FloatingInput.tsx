@@ -10,9 +10,9 @@ interface FloatingInputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 /**
- * Underline input with a floating label: the label rests inside the field
+ * Underline input with a floating label, the label rests inside the field
  * and lifts up when focused or filled, while an orange rule draws across
- * the baseline — the auth-page equivalent of the nav-link underline.
+ * the baseline, the auth-page equivalent of the nav-link underline.
  */
 export default function FloatingInput({ id, label, error, type = "text", ...rest }: FloatingInputProps) {
   const [show, setShow] = useState(false);
@@ -39,7 +39,7 @@ export default function FloatingInput({ id, label, error, type = "text", ...rest
         >
           {label}
         </label>
-        {/* Focus rule draws left → right over the resting border */}
+        {/* Focus rule draws left to right over the resting border */}
         <span
           aria-hidden
           className="absolute bottom-0 left-0 h-px w-full origin-left scale-x-0 bg-accent transition-transform duration-500 ease-expo peer-focus:scale-x-100"

@@ -3,7 +3,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
 
 export const metadata: Metadata = {
-  title: "Forgot Password — Rinova",
+  title: "Forgot Password | Rinova",
   description: "Request a link to reset your Rinova account password.",
 };
 
@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
     <AuthShell
       eyebrow="Account Recovery"
       title={[{ text: "Locked" }, { text: "out?", accent: true }]}
-      subtitle="Tell us your email and we'll send a link to set a new password — valid for 30 minutes."
+      subtitle="Tell us your email and we'll send a link to set a new password, valid for 30 minutes."
       watermark="RESET"
       vehicleUrl="/models/car.glb"
       vehicleLength={4.0}

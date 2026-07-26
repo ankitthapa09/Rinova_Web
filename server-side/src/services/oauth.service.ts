@@ -2,19 +2,15 @@ import { env } from '@/config/env';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 
-/**
- * Google OAuth 2.0 — the Authorization Code flow, exchanged server-side.
- * Because the API is a confidential client, the client secret never reaches the
- * browser: the browser only ever carries the one-time authorization `code`, and
- * this service trades it for the user's profile over a back-channel call.
- */
+// Google sign-in with the authorization code flow, exchanged server-side. The
+// client secret stays on the server; the browser only ever holds the one-time code.
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo';
 
 export interface GoogleProfile {
-  /** Google's stable subject id for this user. */
+  /** Google's stable id for this user */
   googleId: string;
   email: string;
   emailVerified: boolean;
@@ -28,11 +24,8 @@ export const oauthService = {
     return Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
   },
 
-  /**
-   * The Google consent-screen URL to send the browser to. `state` is an opaque
-   * value we also store in a cookie; it must return unchanged, which is what
-   * makes the callback resistant to CSRF / login-CSRF.
-   */
+  // Consent screen url. state is also kept in a cookie and must come back
+  // unchanged, which is what stops csrf on the callback.
   buildAuthUrl(state: string): string {
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID as string,
@@ -61,8 +54,7 @@ export const oauthService = {
     });
 
     if (!tokenRes.ok) {
-      // Google returns a JSON body like {"error":"invalid_client", ...} — log it
-      // so the real cause (bad secret, redirect mismatch, used code) is visible.
+      // log google's error body so the real cause (bad secret, used code) shows up
       const body = await tokenRes.text().catch(() => '');
       logger.warn('google token exchange failed', { status: tokenRes.status, body: body.slice(0, 500) });
       throw AppError.unauthorized('Google sign-in failed');

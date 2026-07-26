@@ -1,7 +1,7 @@
 export interface VehicleDef {
   id: string;
   file: string;
-  /** Normalized longest dimension in world units — buses read bigger than bikes */
+  /** Normalized longest dimension in world units, buses read bigger than bikes */
   length: number;
   /** Extra yaw so every model faces the same way */
   yaw: number;

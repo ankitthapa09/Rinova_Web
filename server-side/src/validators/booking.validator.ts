@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
-/** Start of today — bookings may begin today, never in the past. */
+/** Start of today, bookings may begin today, never in the past. */
 function todayStart(): Date {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   return now;
 }
 
-/** Customer creates a request. Price/days are never accepted — the service
- *  computes them from the vehicle. */
+/** Customer creates a request. Price/days are never accepted, the service
+ * computes them from the vehicle. */
 export const createBookingSchema = z
   .object({
     vehicleSlug: z
@@ -27,8 +27,8 @@ export const createBookingSchema = z
     }
   });
 
-/** Admin resolves a pending request — approve or decline only. Other states
- *  ('cancelled') belong to the customer's own cancel endpoint. */
+/** Admin resolves a pending request, approve or decline only. Other states
+ * ('cancelled') belong to the customer's own cancel endpoint. */
 export const updateBookingStatusSchema = z.object({
   status: z.enum(['confirmed', 'declined'], {
     error: 'Status must be confirmed or declined',

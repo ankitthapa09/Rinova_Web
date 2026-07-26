@@ -3,7 +3,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import SignupForm from "@/components/auth/SignupForm";
 
 export const metadata: Metadata = {
-  title: "Create Account — Rinova",
+  title: "Create Account | Rinova",
   description: "Join Rinova to book premium vehicle rentals and professional washes in minutes.",
 };
 

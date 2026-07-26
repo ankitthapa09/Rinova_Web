@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * Deep-link support for notifications: a link like `/dashboard/rentals?focus=<id>`
+ * Deep-link support for notifications, a link like `/dashboard/rentals?focus=<id>`
  * scrolls to the matching item (id `item-<id>`) and briefly rings it. Pass the
  * loaded list as `ready` so the effect re-runs once the item is actually in the
  * DOM. Reads the query straight off `window` (not useSearchParams) so it never

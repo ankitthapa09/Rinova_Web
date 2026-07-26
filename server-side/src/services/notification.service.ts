@@ -13,7 +13,7 @@ const CUSTOMER_WASHES = '/dashboard/washes';
 const ADMIN_WASHES = '/admin/washes';
 
 /**
- * Notifications are a side-effect of the real work (a booking, a wash) — they
+ * Notifications are a side-effect of the real work (a booking, a wash), they
  * must never break it. Every emitter runs through here, so a failed write is
  * logged and swallowed rather than bubbling up into the booking flow.
  */
@@ -26,7 +26,7 @@ async function safe(label: string, fn: () => Promise<void>): Promise<void> {
 }
 
 export const notificationService = {
-  // ── Queries the bell + page read ──────────────────────────
+  // Queries the bell + page read
   async listMine(
     userId: string,
     opts: { limit?: number; skip?: number } = {},
@@ -43,7 +43,7 @@ export const notificationService = {
   },
 
   async markRead(id: string, userId: string): Promise<NotificationDocument> {
-    // A bad id would otherwise throw a CastError (500) — treat it as "not found".
+    // A bad id would otherwise throw a CastError (500), treat it as "not found".
     if (!Types.ObjectId.isValid(id)) throw AppError.notFound('Notification not found');
     const notification = await notificationRepository.markRead(id, userId);
     if (!notification) throw AppError.notFound('Notification not found');
@@ -61,7 +61,7 @@ export const notificationService = {
     if (!deleted) throw AppError.notFound('Notification not found');
   },
 
-  // ── Rental lifecycle ──────────────────────────────────────
+  // Rental lifecycle
   rentalCreated(booking: BookingDocument, opts: { customerName: string; vehicleName: string }): Promise<void> {
     return safe('rentalCreated', async () => {
       const nights = `${booking.days} day${booking.days > 1 ? 's' : ''}`;
@@ -69,7 +69,7 @@ export const notificationService = {
         recipient: String(booking.user),
         type: 'rental_created',
         title: 'Booking requested',
-        message: `Your request to rent ${opts.vehicleName} is in — we'll confirm it shortly.`,
+        message: `Your request to rent ${opts.vehicleName} is in, we'll confirm it shortly.`,
         link: `${CUSTOMER_RENTALS}?focus=${booking.id}`,
       });
       await notificationRepository.createForMany(await userRepository.findAdminIds(), {
@@ -81,7 +81,7 @@ export const notificationService = {
     });
   },
 
-  /** Admin confirmed or declined — tell the customer. Reads booking.status. */
+  /** Admin confirmed or declined, tell the customer. Reads booking.status. */
   rentalResolved(booking: BookingDocument, opts: { vehicleName: string }): Promise<void> {
     return safe('rentalResolved', async () => {
       const confirmed = booking.status === 'confirmed';
@@ -97,7 +97,7 @@ export const notificationService = {
     });
   },
 
-  /** Customer cancelled — let the admin desk know. */
+  /** Customer cancelled, let the admin desk know. */
   rentalCancelled(opts: { customerName: string; vehicleName: string; bookingId: string }): Promise<void> {
     return safe('rentalCancelled', async () => {
       await notificationRepository.createForMany(await userRepository.findAdminIds(), {
@@ -109,14 +109,14 @@ export const notificationService = {
     });
   },
 
-  // ── Wash lifecycle ────────────────────────────────────────
+  // Wash lifecycle
   washCreated(order: WashOrderDocument, opts: { customerName: string }): Promise<void> {
     return safe('washCreated', async () => {
       await notificationRepository.create({
         recipient: String(order.user),
         type: 'wash_created',
         title: 'Wash booked',
-        message: `Your ${order.packageName} wash is in — we'll confirm it shortly.`,
+        message: `Your ${order.packageName} wash is in, we'll confirm it shortly.`,
         link: `${CUSTOMER_WASHES}?focus=${order.id}`,
       });
       await notificationRepository.createForMany(await userRepository.findAdminIds(), {
@@ -128,13 +128,13 @@ export const notificationService = {
     });
   },
 
-  /** Admin moved the order along (confirmed / declined / completed) — tell the customer. */
+  /** Admin moved the order along (confirmed / declined / completed), tell the customer. */
   washResolved(order: WashOrderDocument): Promise<void> {
     return safe('washResolved', async () => {
       const map = {
         confirmed: { type: 'wash_confirmed', title: 'Wash confirmed', body: `is confirmed for ${order.slot}.` },
         declined: { type: 'wash_declined', title: 'Wash declined', body: 'request was declined.' },
-        completed: { type: 'wash_completed', title: 'Wash completed', body: 'is done — thanks for visiting.' },
+        completed: { type: 'wash_completed', title: 'Wash completed', body: 'is done, thanks for visiting.' },
       } as const;
       const entry = map[order.status as keyof typeof map];
       if (!entry) return; // pending/cancelled don't come through this path
@@ -149,7 +149,7 @@ export const notificationService = {
     });
   },
 
-  /** Customer cancelled — let the admin desk know. */
+  /** Customer cancelled, let the admin desk know. */
   washCancelled(order: WashOrderDocument, opts: { customerName: string }): Promise<void> {
     return safe('washCancelled', async () => {
       await notificationRepository.createForMany(await userRepository.findAdminIds(), {

@@ -9,7 +9,7 @@ export interface ApiUser {
   role: "user" | "admin";
   isEmailVerified: boolean;
   twoFactorEnabled: boolean;
-  /** How the account signs in — "google" accounts may have no password. */
+  /** How the account signs in, "google" accounts may have no password. */
   authProvider?: "local" | "google";
   profileImageUrl?: string;
   createdAt: string;
@@ -21,7 +21,7 @@ export interface ApiUser {
 export class ApiError extends Error {
   status: number;
   fieldErrors: Record<string, string>;
-  /** Seconds to wait before retrying — set on lockout (423) / rate-limit (429). */
+  /** Seconds to wait before retrying, set on lockout (423) / rate-limit (429). */
   retryAfter?: number;
 
   constructor(
@@ -37,10 +37,10 @@ export class ApiError extends Error {
   }
 }
 
-// Access token lives in memory only — nothing readable in localStorage for
+// Access token lives in memory only, nothing readable in localStorage for
 // XSS to lift. The refresh token is an httpOnly cookie the browser manages.
 let accessToken: string | null = null;
-// Shared promise while a refresh is in flight — see authApi.refresh().
+// Shared promise while a refresh is in flight, see authApi.refresh().
 let refreshInFlight: Promise<void> | null = null;
 
 export function getAccessToken(): string | null {
@@ -49,7 +49,7 @@ export function getAccessToken(): string | null {
 
 /**
  * Absolute URL that kicks off Google sign-in. This is a full-page navigation
- * (`window.location.href = …`), not a fetch — the server redirects the browser
+ * (`window.location.href = …`), not a fetch, the server redirects the browser
  * to Google's consent screen and later back to /oauth/callback.
  */
 export function googleAuthUrl(): string {
@@ -90,7 +90,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       ...init,
-      // Send/receive the auth cookie across origins (localhost:3002 → :4000)
+      // Send/receive the auth cookie across origins (localhost:3002 to :4000)
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -137,7 +137,7 @@ export interface LoginInput {
 type AuthData = { user: ApiUser; accessToken: string };
 
 /**
- * A normal login either signs you in, or — when 2FA is on — hands back a
+ * A normal login either signs you in, or, when 2FA is on, hands back a
  * short-lived challenge and asks for a code. The caller branches on
  * `twoFactorRequired`.
  */
@@ -145,13 +145,13 @@ export type LoginResult =
   | { user: ApiUser }
   | { twoFactorRequired: true; challengeToken: string };
 
-// Raw server payload for /auth/login — one of the two shapes above, but with
+// Raw server payload for /auth/login, one of the two shapes above, but with
 // the tokens the client keeps to itself.
 type LoginData =
   | { user: ApiUser; accessToken: string }
   | { twoFactorRequired: true; challengeToken: string };
 
-/** What the enable step returns — the one-time recovery codes to save. */
+/** What the enable step returns, the one-time recovery codes to save. */
 export interface TwoFactorSetup {
   secret: string;
   qrDataUrl: string;
@@ -173,7 +173,7 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(input),
     });
-    // 2FA is on — no session yet. Pass the challenge back for the code step.
+    // 2FA is on, no session yet. Pass the challenge back for the code step.
     if ("twoFactorRequired" in data) {
       return { twoFactorRequired: true, challengeToken: data.challengeToken };
     }
@@ -182,7 +182,7 @@ export const authApi = {
     return { user: data.user };
   },
 
-  /** Second login step: exchange the challenge + a TOTP/recovery code for a session. */
+  /** Second login step, exchange the challenge + a TOTP/recovery code for a session. */
   async twoFactorLogin(challengeToken: string, code: string): Promise<ApiUser> {
     const data = await request<AuthData>("/auth/login/2fa", {
       method: "POST",
@@ -202,12 +202,12 @@ export const authApi = {
   /**
    * Restores a session from the refresh cookie (e.g. after a page reload).
    *
-   * Single-flight: parallel callers share one request. Refresh tokens rotate,
+   * Single-flight, parallel callers share one request. Refresh tokens rotate,
    * so a second simultaneous call would present a token the first already
-   * replaced — indistinguishable from a stolen token being replayed, which
+   * replaced, indistinguishable from a stolen token being replayed, which
    * revokes every session. React's dev StrictMode double-invokes effects, so
    * this is the normal case, not an edge case.
-   */
+ */
   refresh(): Promise<void> {
     if (refreshInFlight) return refreshInFlight;
 
@@ -244,14 +244,14 @@ export const authApi = {
     return user;
   },
 
-  /** Uploads a new profile photo (multipart — not the JSON `request` helper). */
+  /** Uploads a new profile photo (multipart, not the JSON `request` helper). */
   async updateAvatar(file: File): Promise<ApiUser> {
     const form = new FormData();
     form.append("file", file);
 
     let res: Response;
     try {
-      // No Content-Type header — the browser sets the multipart boundary itself.
+      // No Content-Type header, the browser sets the multipart boundary itself.
       res = await fetch(`${BASE_URL}/auth/me/avatar`, {
         method: "POST",
         credentials: "include",
@@ -281,7 +281,7 @@ export const authApi = {
     return data.message;
   },
 
-  /** Requests a reset link — the server never says whether the email exists. */
+  /** Requests a reset link, the server never says whether the email exists. */
   async forgotPassword(email: string, captchaToken?: string): Promise<string> {
     const { message } = await request<{ message: string }>("/auth/forgot-password", {
       method: "POST",
@@ -316,14 +316,14 @@ export const authApi = {
     return message;
   },
 
-  // ── Two-factor management (signed-in user) ────────────────
+  // Two-factor management (signed-in user)
 
-  /** Begins setup: reserves a secret and returns a QR + manual key to scan. */
+  /** Begins setup, reserves a secret and returns a QR + manual key to scan. */
   startTwoFactorSetup(): Promise<TwoFactorSetup> {
     return request<TwoFactorSetup>("/auth/2fa/setup", { method: "POST" });
   },
 
-  /** Confirms a scanned code and flips 2FA on — returns the one-time recovery codes. */
+  /** Confirms a scanned code and flips 2FA on, returns the one-time recovery codes. */
   async confirmTwoFactorSetup(code: string): Promise<string[]> {
     const { recoveryCodes } = await request<{ recoveryCodes: string[] }>("/auth/2fa/enable", {
       method: "POST",
@@ -332,7 +332,7 @@ export const authApi = {
     return recoveryCodes;
   },
 
-  /** Turns 2FA off — needs a fresh code to prove it's really the account owner. */
+  /** Turns 2FA off, needs a fresh code to prove it's really the account owner. */
   async disableTwoFactor(code: string): Promise<string> {
     const { message } = await request<{ message: string }>("/auth/2fa/disable", {
       method: "POST",

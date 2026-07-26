@@ -38,7 +38,7 @@ function validate(f: Fields): FieldErrors {
 
 export default function AccountCard() {
   const user = useDashboardUser();
-  // Local mirror — the shell resolves the user once; a reload re-syncs from /me.
+  // Local mirror, the shell resolves the user once; a reload re-syncs from /me.
   const [profile, setProfile] = useState<ApiUser>(user);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState<Fields>({
@@ -49,7 +49,7 @@ export default function AccountCard() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
 
-  // Email verification: idle → confirm prompt → sending.
+  // Email verification, idle to confirm prompt to sending.
   const [verifyStep, setVerifyStep] = useState<"idle" | "confirm">("idle");
   const [sending, setSending] = useState(false);
 
@@ -163,7 +163,7 @@ export default function AccountCard() {
             <Camera className="h-3.5 w-3.5" />
             {uploading ? "Uploading…" : profile.profileImageUrl ? "Change photo" : "Upload photo"}
           </button>
-          <p className="mt-2 text-[11px] text-fog">PNG, JPG, or WEBP — up to 10 MB.</p>
+          <p className="mt-2 text-[11px] text-fog">PNG, JPG, or WEBP, up to 10 MB.</p>
           <input
             ref={fileInput}
             type="file"
@@ -207,7 +207,7 @@ export default function AccountCard() {
             </div>
           ))}
 
-          {/* Email is the login identity — shown but locked. */}
+          {/* Email is the login identity, shown but locked. */}
           <div>
             <label className="block text-[11px] uppercase tracking-[0.16em] text-fog">Email</label>
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-night/20 px-4 py-2.5 text-[15px] text-fog">
@@ -253,7 +253,7 @@ export default function AccountCard() {
         </dl>
       )}
 
-      {/* Email verification prompt — only while unverified and not editing. */}
+      {/* Email verification prompt, only while unverified and not editing. */}
       {!editing && !profile.isEmailVerified ? (
         <div className="mt-5 rounded-xl border border-line bg-night/30 p-4">
           {verifyStep === "idle" ? (

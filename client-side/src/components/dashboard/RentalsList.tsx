@@ -19,7 +19,7 @@ export function dateRange(startIso: string, endIso: string): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   const start = new Date(startIso).toLocaleDateString("en-US", opts);
   const end = new Date(endIso).toLocaleDateString("en-US", { ...opts, year: "numeric" });
-  return `${start} – ${end}`;
+  return `${start} - ${end}`;
 }
 
 export function isCancellable(b: Booking): boolean {
@@ -30,7 +30,7 @@ export function isCancellable(b: Booking): boolean {
 }
 
 /** Rows of the customer's own bookings, with cancel. Parent owns the data;
- *  onChanged fires after a successful cancel so it can refetch. */
+ * onChanged fires after a successful cancel so it can refetch. */
 export default function RentalsList({
   bookings,
   onChanged,

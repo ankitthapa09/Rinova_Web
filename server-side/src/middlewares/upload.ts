@@ -3,12 +3,6 @@ import multer, { MulterError } from 'multer';
 import type { Request, Response, NextFunction } from 'express';
 import { AppError } from '@/utils/AppError';
 
-/**
- * Multipart upload guard for vehicle media.
- * File upload is a classic attack surface, so this middleware is deliberately
- * strict: files are held in memory (never written to disk here and the service streams them straight to Cloudinary) and every file must pass BOTH an
- * allow listed extension AND an allow listed MIME type. We never trust one signal alone, and we never use the client-supplied filename for storage.
- */
 
 export type UploadKind = 'image' | 'model';
 
@@ -19,16 +13,16 @@ const RULES: Record<
   image: {
     mimes: new Set(['image/png', 'image/jpeg', 'image/webp']),
     exts: new Set(['.png', '.jpg', '.jpeg', '.webp']),
-    // 10 MB — the Cloudinary free-plan ceiling. Never set this above the plan
+    // 10 MB, the Cloudinary free-plan ceiling. Never set this above the plan
     // limit, or oversize files pass our check then fail at Cloudinary with a 500.
     maxBytes: 10 * 1024 * 1024,
     label: 'an image (PNG, JPG, or WEBP)',
   },
   model: {
-    
+
     mimes: new Set(['model/gltf-binary', 'application/octet-stream']),
     exts: new Set(['.glb']),
-    // Models may arrive large — the upload service Draco-compresses them before
+    // Models may arrive large, the upload service Draco-compresses them before
     // storage, so only the compressed result must fit Cloudinary's 10 MB cap.
     maxBytes: 50 * 1024 * 1024,
     label: 'a 3D model (GLB)',
@@ -73,7 +67,7 @@ export function uploadSingle(field = 'file', fixedKind?: UploadKind) {
         if (err instanceof MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
             const mb = Math.round(MAX_ANY_BYTES / (1024 * 1024));
-            return next(AppError.badRequest(`File is too large — uploads are limited to ${mb} MB.`));
+            return next(AppError.badRequest(`File is too large, uploads are limited to ${mb} MB.`));
           }
           return next(AppError.badRequest(`Upload error: ${err.message}`));
         }

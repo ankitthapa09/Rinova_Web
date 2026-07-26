@@ -1,7 +1,7 @@
 import { CarFront, Droplets } from "lucide-react";
 import type { NotificationType } from "@/lib/notificationApi";
 
-// Colour the icon by outcome: new = accent, confirmed/done = blue, ended = fog.
+// Colour the icon by outcome, new = accent, confirmed/done = blue, ended = fog.
 export function tone(type: NotificationType): string {
   if (type.endsWith("_confirmed") || type.endsWith("_completed")) return "text-[#4EA8DE]";
   if (type.endsWith("_declined") || type.endsWith("_cancelled")) return "text-fog";

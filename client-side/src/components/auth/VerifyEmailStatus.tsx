@@ -10,7 +10,7 @@ type Phase = "verifying" | "done" | "failed";
 export default function VerifyEmailStatus({ token }: { token: string }) {
   const [phase, setPhase] = useState<Phase>("verifying");
   const [message, setMessage] = useState("");
-  // React 18 dev runs effects twice — the second call would burn the token
+  // React 18 dev runs effects twice, the second call would burn the token
   // and report failure, so guard it.
   const fired = useRef(false);
 
@@ -56,7 +56,7 @@ export default function VerifyEmailStatus({ token }: { token: string }) {
         </Link>
       ) : (
         <p className="text-[13px] text-fog">
-          Links expire after 24 hours — sign in and use{" "}
+          Links expire after 24 hours, sign in and use{" "}
           <span className="text-cream">Resend verification</span> on your dashboard to get a new
           one.
         </p>

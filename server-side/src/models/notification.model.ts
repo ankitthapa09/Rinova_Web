@@ -1,6 +1,6 @@
 import { Schema, model, Types, type HydratedDocument, type Model } from 'mongoose';
 
-/** Every in-app notification is one of these — the client keys an icon/colour off it. */
+/** Every in-app notification is one of these, the client keys an icon/colour off it. */
 export const NOTIFICATION_TYPES = [
   'rental_created',
   'rental_confirmed',

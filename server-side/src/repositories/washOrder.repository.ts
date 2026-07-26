@@ -6,7 +6,7 @@ import {
 } from '@/models/washOrder.model';
 import type { WashSlot } from '@/config/washCatalogue';
 
-// Data-access layer for wash orders — the only place that queries the model.
+// Data-access layer for wash orders, the only place that queries the model.
 
 export type CreateWashOrderData = Pick<
   IWashOrder,
@@ -22,11 +22,11 @@ export type CreateWashOrderData = Pick<
 > &
   Partial<Pick<IWashOrder, 'notes'>>;
 
-/** Only what a list view needs off the customer — never the password or address. */
+/** Only what a list view needs off the customer, never the password or address. */
 const USER_FIELDS = 'name email phone';
 
-/** A booked bay: confirmed work, or work already done. Pending requests don't
- *  hold a bay, and declined/cancelled ones give theirs back. */
+/** A booked bay, confirmed work, or work already done. Pending requests don't
+ * hold a bay, and declined/cancelled ones give theirs back. */
 const HOLDS_A_BAY: WashOrderStatus[] = ['confirmed', 'completed'];
 
 export const washOrderRepository = {
@@ -43,15 +43,15 @@ export const washOrderRepository = {
     return WashOrder.find({ user: userId }).sort({ createdAt: -1 }).exec();
   },
 
-  /** Admin view — every order, newest first, with the customer joined in. */
+  /** Admin view, every order, newest first, with the customer joined in. */
   findAll(): Promise<WashOrderDocument[]> {
     return WashOrder.find().sort({ createdAt: -1 }).populate('user', USER_FIELDS).exec();
   },
 
   /**
-   * The capacity check: how many bays are taken in one slot on one day?
+   * The capacity check, how many bays are taken in one slot on one day?
    * `excludeId` lets an order be re-checked at approval time without counting itself.
-   */
+ */
   countBaysTaken(day: Date, slot: WashSlot, excludeId?: string): Promise<number> {
     return WashOrder.countDocuments({
       scheduledDate: day,
@@ -61,7 +61,7 @@ export const washOrderRepository = {
     }).exec();
   },
 
-  /** Bays taken per slot across a whole day — one query behind the slot picker. */
+  /** Bays taken per slot across a whole day, one query behind the slot picker. */
   async countBaysBySlot(day: Date): Promise<Record<string, number>> {
     const rows = await WashOrder.aggregate<{ _id: WashSlot; count: number }>([
       { $match: { scheduledDate: day, status: { $in: HOLDS_A_BAY } } },
@@ -71,8 +71,8 @@ export const washOrderRepository = {
     return Object.fromEntries(rows.map((row) => [row._id, row.count]));
   },
 
-  /** Is this vehicle already booked in that day — in any slot? One wash a day
-   *  per plate; you can't queue the same car twice. */
+  /** Is this vehicle already booked in that day, in any slot? One wash a day
+   * per plate; you can't queue the same car twice. */
   findLiveForPlateOnDay(plateNumber: string, day: Date): Promise<WashOrderDocument | null> {
     return WashOrder.findOne({
       plateNumber,

@@ -6,10 +6,10 @@ import { createBookingSchema, updateBookingStatusSchema } from '@/validators/boo
 
 const router = Router();
 
-// Everything about bookings involves an identity — no anonymous routes.
+// Everything about bookings involves an identity, no anonymous routes.
 router.use(requireAuth);
 
-// Customer — only real customers rent vehicles; admins manage the fleet, so
+// Customer, only real customers rent vehicles; admins manage the fleet, so
 // they can't book (not even their own vehicles).
 router.post('/', requireRole('user'), validate(createBookingSchema), bookingController.create);
 router.get('/mine', requireRole('user'), bookingController.listMine);

@@ -20,7 +20,7 @@ function dateRange(startIso: string, endIso: string): string {
   const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
   const start = new Date(startIso).toLocaleDateString("en-US", opts);
   const end = new Date(endIso).toLocaleDateString("en-US", { ...opts, year: "numeric" });
-  return `${start} – ${end}`;
+  return `${start} - ${end}`;
 }
 
 /** The admin list always has the customer joined in. */
@@ -74,7 +74,7 @@ export default function RentalsManager() {
       );
       await reload();
     } catch (e) {
-      // e.g. 409 — another confirmed booking already covers those dates
+      // e.g. 409, another confirmed booking already covers those dates
       toast.error(e instanceof ApiError ? e.message : "Couldn't update the booking.");
       await reload();
     } finally {
@@ -150,7 +150,7 @@ export default function RentalsManager() {
                       <span className="text-fog"> · {dateRange(b.startDate, b.endDate)}</span>
                     </p>
                     <p className="truncate text-[12px] text-fog">
-                      {who ? `${who.name} · ${who.phone}` : "—"} · {b.days}{" "}
+                      {who ? `${who.name} · ${who.phone}` : "-"} · {b.days}{" "}
                       {b.days === 1 ? "day" : "days"} ·{" "}
                       <span className="text-cream">{formatNpr(b.totalPrice)}</span>
                     </p>

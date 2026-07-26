@@ -4,7 +4,7 @@ import { catchAsync } from '@/utils/catchAsync';
 import type { ListVehiclesQuery } from '@/validators/vehicle.validator';
 
 export const vehicleController = {
-  // ── Public ───────────────────────────────────────────────
+  // Public
 
   list: catchAsync(async (_req: Request, res: Response) => {
     const { category } = res.locals.query as ListVehiclesQuery;
@@ -17,7 +17,7 @@ export const vehicleController = {
     res.status(200).json({ success: true, data: { vehicle } });
   }),
 
-  // ── Admin ────────────────────────────────────────────────
+  // Admin
 
   listAll: catchAsync(async (_req: Request, res: Response) => {
     const vehicles = await vehicleService.listAll();

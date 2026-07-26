@@ -3,12 +3,8 @@
 import { useState } from "react";
 import { googleAuthUrl } from "@/lib/api";
 
-/**
- * "Continue with Google" button plus an "or" divider, shown above the
- * email/password fields on the login and signup forms. Clicking it is a
- * full-page navigation to the API's OAuth route (not a fetch), which redirects
- * on to Google.
- */
+// Google button and an "or" divider for the login and signup forms. Clicking it
+// is a full page navigation to the api's oauth route, which redirects on to Google.
 export default function SocialAuth({ label }: { label: string }) {
   const [busy, setBusy] = useState(false);
 
@@ -39,7 +35,7 @@ export default function SocialAuth({ label }: { label: string }) {
   );
 }
 
-/** Google's multi-colour "G" mark as inline SVG (no external asset / CSP-safe). */
+// Google "G" mark as inline svg so there's no external asset to load
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden focusable="false">

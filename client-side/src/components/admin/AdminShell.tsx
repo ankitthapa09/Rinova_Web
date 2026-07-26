@@ -43,7 +43,7 @@ interface NavItem {
   soon?: boolean;
 }
 
-// The admin's own navigation — the operator's jobs, not a customer's. Sections
+// The admin's own navigation, the operator's jobs, not a customer's. Sections
 // whose backend isn't built yet are flagged `soon` and light up as we add each.
 const NAV: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
@@ -141,7 +141,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <div className="relative flex min-h-[100svh]">
         <Cursor />
 
-        {/* ── Sidebar ─────────────────────────────────────── */}
+        {/* Sidebar */}
         <aside className="sticky top-0 hidden h-[100svh] w-[250px] shrink-0 flex-col border-r border-line px-6 py-8 lg:flex">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -179,7 +179,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        {/* ── Main ────────────────────────────────────────── */}
+        {/* Main */}
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div aria-hidden className="glow-orb absolute -right-[20%] -top-[30%] h-[50vw] w-[50vw]" />
 
@@ -206,7 +206,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            {/* Mobile nav — horizontal scroll of the same sections */}
+            {/* Mobile nav, horizontal scroll of the same sections */}
             <nav className="mb-8 flex gap-1 overflow-x-auto lg:hidden">
               <NavLinks pathname={pathname} />
             </nav>

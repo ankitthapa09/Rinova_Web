@@ -23,7 +23,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Set once the server asks for a second factor — flips the form to code entry.
+  // Set once the server asks for a second factor, flips the form to code entry.
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -35,11 +35,11 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
     captcha?: string;
   }>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
-  // Account lockout: server hands back how long to wait; we count it down here.
+  // Account lockout, server hands back how long to wait; we count it down here.
   const [lockUntil, setLockUntil] = useState<number | null>(null);
   const [lockRemaining, setLockRemaining] = useState(0);
   // Already signed in (e.g. arrived here with the back button)? Don't show the
-  // form — send them where they belong. Passive: no network call for guests.
+  // form, send them where they belong. Passive, no network call for guests.
   const { user: session, loading: sessionLoading } = useAuth(true);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
   const finishSignIn = (user: ApiUser) => {
     setStatus("success");
     toast.success(`Welcome back, ${user.name.split(" ")[0]}.`);
-    // replace, not push — going Back should skip the login page, not return to it.
+    // replace, not push, going Back should skip the login page, not return to it.
     const destination = user.role === "admin" ? "/admin" : "/dashboard";
     window.setTimeout(() => router.replace(destination), 900);
   };
@@ -101,7 +101,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
     e.preventDefault();
     if (status !== "idle" || lockRemaining > 0) return;
 
-    // ── Step two: a 2FA code is expected ──────────────────
+    // Step two, a 2FA code is expected
     if (challengeToken) {
       if (!code.trim()) {
         setErrors({ code: "Enter your code." });
@@ -123,7 +123,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
       return;
     }
 
-    // ── Step one: email + password ────────────────────────
+    // Step one, email + password
     const next: typeof errors = {};
     if (!EMAIL_RE.test(email)) next.email = "Enter a valid email address.";
     if (!password) next.password = "Enter your password.";
@@ -137,7 +137,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
     setStatus("loading");
     try {
       const result = await authApi.login({ email, password, captchaToken: captchaToken ?? undefined });
-      // 2FA on — no session yet. Move to the code step instead of redirecting.
+      // 2FA on, no session yet. Move to the code step instead of redirecting.
       if ("twoFactorRequired" in result) {
         setStatus("idle");
         setChallengeToken(result.challengeToken);
@@ -152,7 +152,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
     }
   };
 
-  // ── Second step: authenticator / recovery code ──────────
+  // Second step, authenticator / recovery code
   if (challengeToken) {
     return (
       <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
@@ -199,7 +199,7 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
     );
   }
 
-  // ── First step: credentials ─────────────────────────────
+  // First step, credentials
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
       <SocialAuth label="Continue with Google" />

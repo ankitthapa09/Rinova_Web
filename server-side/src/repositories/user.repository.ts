@@ -6,11 +6,11 @@ import {
   type RefreshSession,
 } from '@/models/user.model';
 
- // Data-access layer for users — the only place that queries the User model.
+ // Data-access layer for users, the only place that queries the User model.
 
 export type CreateUserData = Pick<IUser, 'name' | 'email' | 'phone' | 'address' | 'password'>;
 
-/** A Google sign-up: no password or contact details yet, email already proven. */
+/** A Google sign-up, no password or contact details yet, email already proven. */
 export type CreateOAuthUserData = { name: string; email: string; googleId: string };
 
 export const userRepository = {
@@ -19,7 +19,7 @@ export const userRepository = {
   },
 
   /** Creates a Google-backed account. Email is trusted (Google verified it),
-   *  so it's marked verified and no password is set. */
+   * so it's marked verified and no password is set. */
   createOAuthUser(data: CreateOAuthUserData): Promise<UserDocument> {
     return User.create({
       name: data.name,
@@ -31,7 +31,7 @@ export const userRepository = {
   },
 
   /** Links a Google id to an existing account and trusts its now-verified email.
-   *  Safe because Google has proven ownership of an address the account owns. */
+   * Safe because Google has proven ownership of an address the account owns. */
   async linkGoogle(id: string, googleId: string): Promise<void> {
     await User.updateOne({ _id: id }, { $set: { googleId, isEmailVerified: true } }).exec();
   },
@@ -75,13 +75,13 @@ export const userRepository = {
     return User.findById(id).exec();
   },
 
-  /** Ids of every admin — used to fan notifications out to the whole desk. */
+  /** Ids of every admin, used to fan notifications out to the whole desk. */
   async findAdminIds(): Promise<string[]> {
     const admins = await User.find({ role: 'admin' }).select('_id').lean().exec();
     return admins.map((a) => String(a._id));
   },
 
-  /** Self-service profile edit — only the contact fields, never email or role. */
+  /** Self-service profile edit, only the contact fields, never email or role. */
   updateProfile(
     id: string,
     data: Pick<IUser, 'name' | 'phone' | 'address'>,
@@ -114,14 +114,14 @@ export const userRepository = {
     return User.findById(id).select('+password +passwordHistory +refreshSessions').exec();
   },
 
-  /** Loads the 2FA secrets — never selected by default. */
+  /** Loads the 2FA secrets, never selected by default. */
   findByIdWith2FA(id: string): Promise<UserDocument | null> {
     return User.findById(id)
       .select('+twoFactorSecret +twoFactorRecoveryCodes +twoFactorLastUsedStep')
       .exec();
   },
 
-  /** Stores a secret during setup — 2FA stays OFF until a code confirms it. */
+  /** Stores a secret during setup, 2FA stays OFF until a code confirms it. */
   async setTwoFactorSecret(id: string, secret: string): Promise<void> {
     await User.updateOne({ _id: id }, { $set: { twoFactorSecret: secret } }).exec();
   },
@@ -176,11 +176,11 @@ export const userRepository = {
   },
 
   /**
-   * Rotation as a compare-and-swap: only advances if the family is still on
+   * Rotation as a compare-and-swap, only advances if the family is still on
    * `expectedHash`. Two simultaneous refreshes both match the same token, but
-   * only the first update finds it — the loser gets false and must not rotate,
+   * only the first update finds it, the loser gets false and must not rotate,
    * or the two would diverge and orphan the caller's token.
-   */
+ */
   async rotateSession(
     id: string,
     family: string,
@@ -202,12 +202,12 @@ export const userRepository = {
     return res.matchedCount > 0;
   },
 
-  /** Logout / reuse — remove one family's session. */
+  /** Logout / reuse, remove one family's session. */
   async removeSessionByFamily(id: string, family: string): Promise<void> {
     await User.updateOne({ _id: id }, { $pull: { refreshSessions: { family } } }).exec();
   },
 
-  /** Reuse detected / logout-everywhere — drop every session. */
+  /** Reuse detected / logout-everywhere, drop every session. */
   async clearAllSessions(id: string): Promise<void> {
     await User.updateOne({ _id: id }, { $set: { refreshSessions: [] } }).exec();
   },
@@ -245,7 +245,7 @@ export const userRepository = {
 
   // Admin
 
-  /** Everyone, newest first — password stays excluded by its select:false. */
+  /** Everyone, newest first, password stays excluded by its select:false. */
   findAll(): Promise<UserDocument[]> {
     return User.find().sort({ createdAt: -1 }).exec();
   },

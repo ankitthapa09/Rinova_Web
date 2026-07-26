@@ -7,7 +7,7 @@ interface SplitCharsProps {
  * Splits text into per-character spans for cascade reveals. Characters are
  * grouped into non-breaking word spans so lines only wrap between words.
  * Wrap groups of these in a `.split-line` (overflow hidden) container and
- * give that container an aria-label — the chars themselves are decorative.
+ * give that container an aria-label, the chars themselves are decorative.
  */
 export default function SplitChars({ text, className = "" }: SplitCharsProps) {
   const words = text.split(" ").filter((w) => w.length > 0);

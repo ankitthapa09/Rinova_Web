@@ -3,7 +3,7 @@ import AuthShell from "@/components/auth/AuthShell";
 import VerifyEmailStatus from "@/components/auth/VerifyEmailStatus";
 
 export const metadata: Metadata = {
-  title: "Verify Email — Rinova",
+  title: "Verify Email | Rinova",
   description: "Confirm the email address on your Rinova account.",
 };
 

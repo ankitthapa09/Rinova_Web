@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import OAuthCallback from "@/components/auth/OAuthCallback";
 
 export const metadata: Metadata = {
-  title: "Signing in — Rinova",
+  title: "Signing in | Rinova",
 };
 
 export default function OAuthCallbackPage() {

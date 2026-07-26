@@ -13,13 +13,13 @@ const DAY_MS = 86_400_000;
 const VEHICLE_FIELDS = 'name slug imageUrl pricePerDay category';
 
 export const bookingService = {
-  /** Customer requests a rental. Price and length are computed here — the
-   *  client's numbers are never trusted. */
+  /** Customer requests a rental. Price and length are computed here, the
+   * client's numbers are never trusted. */
   async create(userId: string, input: CreateBookingInput): Promise<BookingDocument> {
     const vehicle = await vehicleRepository.findBySlug(input.vehicleSlug);
     if (!vehicle || !vehicle.isAvailable) throw AppError.notFound('Vehicle not found');
 
-    // One live booking per vehicle per customer — cancel it first to rebook.
+    // One live booking per vehicle per customer, cancel it first to rebook.
     const existing = await bookingRepository.findActiveForUserVehicle(userId, vehicle._id);
     if (existing) {
       throw AppError.conflict('You already have an active booking for this vehicle');
@@ -61,13 +61,13 @@ export const bookingService = {
     return bookingRepository.findByUser(userId);
   },
 
-  /** Admin — every booking, both sides joined. */
+  /** Admin, every booking, both sides joined. */
   listAll(): Promise<BookingDocument[]> {
     return bookingRepository.findAll();
   },
 
-  /** Admin resolves a pending request. Approving re-checks availability —
-   *  two pending requests can compete for the same dates; first approval wins. */
+  /** Admin resolves a pending request. Approving re-checks availability -
+   * two pending requests can compete for the same dates; first approval wins. */
   async updateStatus(id: string, input: UpdateBookingStatusInput): Promise<BookingDocument> {
     const booking = await bookingRepository.findById(id);
     if (!booking) throw AppError.notFound('Booking not found');
@@ -96,8 +96,8 @@ export const bookingService = {
     return booking;
   },
 
-  /** Customer cancels their own booking — only before it starts. Bookings that
-   *  aren't theirs 404 rather than 403, so ids can't be probed for existence. */
+  /** Customer cancels their own booking, only before it starts. Bookings that
+   * aren't theirs 404 rather than 403, so ids can't be probed for existence. */
   async cancel(id: string, userId: string): Promise<BookingDocument> {
     const booking = await bookingRepository.findById(id);
     if (!booking || String(booking.user) !== userId) throw AppError.notFound('Booking not found');

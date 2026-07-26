@@ -19,7 +19,7 @@ import { bookingApi, type Booking } from "@/lib/bookingApi";
 import { STATUS_STYLES, dateRange, isCancellable } from "@/components/dashboard/RentalsList";
 import { ApiError } from "@/lib/api";
 
-// Same turntable stage the auth pages use — generic vehicle showcase
+// Same turntable stage the auth pages use, generic vehicle showcase
 const VehicleStage = dynamic(() => import("@/components/auth/AuthScene"), { ssr: false });
 
 const DAY_MS = 86_400_000;
@@ -75,12 +75,12 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
   const [dropoff, setDropoff] = useState("");
   const [status, setStatus] = useState<SubmitStatus>("idle");
 
-  // The signed-in user's live booking for THIS vehicle, if any — one active
+  // The signed-in user's live booking for THIS vehicle, if any, one active
   // booking per vehicle, so the panel offers cancel instead of rebooking.
   const [myBooking, setMyBooking] = useState<Booking | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
-  // Photo lightbox — index of the open photo, or null when closed.
+  // Photo lightbox, index of the open photo, or null when closed.
   const [lightbox, setLightbox] = useState<number | null>(null);
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
     }
   };
 
-  // Gallery photos: uploaded shots, or the single cover for older vehicles.
+  // Gallery photos, uploaded shots, or the single cover for older vehicles.
   const photos = vehicle ? (vehicle.images?.length ? vehicle.images : [vehicle.imageUrl]) : [];
 
   // Lightbox keyboard nav + scroll lock while it's open.
@@ -198,7 +198,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
       await bookingApi.create({ vehicleSlug: vehicle.slug, startDate: pickup, endDate: dropoff });
       setStatus("success");
       toast.success(
-        `Request sent — ${vehicle.name} for ${days} ${days === 1 ? "day" : "days"}. We'll confirm it shortly.`,
+        `Request sent, ${vehicle.name} for ${days} ${days === 1 ? "day" : "days"}. We'll confirm it shortly.`,
       );
       // Show it in their dashboard, where the status will update.
       window.setTimeout(() => router.push("/dashboard"), 1400);
@@ -259,7 +259,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
           <NotFound />
         ) : (
           <div className="mt-8 grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
-            {/* ── 3D stage + photo gallery ─────────────────────── */}
+            {/* 3D stage + photo gallery */}
             <div className="lg:sticky lg:top-28 lg:self-start">
             <div
               data-detail-stage
@@ -274,7 +274,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
               {gl?.webgl && vehicle.modelUrl ? (
                 <VehicleStage url={vehicle.modelUrl} length={vehicle.modelLength ?? 3.5} animate={gl.animate} />
               ) : gl ? (
-                // No 3D model (or no WebGL): the cover photo fills the stage and
+                // No 3D model (or no WebGL), the cover photo fills the stage and
                 // opens the lightbox on click.
                 <button
                   type="button"
@@ -299,7 +299,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
               </span>
             </div>
 
-            {/* Photo gallery — click any shot to open it full-size */}
+            {/* Photo gallery, click any shot to open it full-size */}
             {photos.length > 0 ? (
               <div data-detail-item className="mt-4 grid grid-cols-4 gap-3">
                 {photos.map((src, i) => (
@@ -312,7 +312,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
                   >
                     <Image
                       src={src}
-                      alt={`${vehicle.name} — photo ${i + 1}`}
+                      alt={`${vehicle.name}, photo ${i + 1}`}
                       fill
                       sizes="(max-width: 1024px) 23vw, 13vw"
                       className="object-cover transition-transform duration-500 ease-expo group-hover:scale-105"
@@ -323,7 +323,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
             ) : null}
             </div>
 
-            {/* ── Facts + booking ──────────────────────────────── */}
+            {/* Facts + booking */}
             <div>
               <p data-detail-item className="text-[11px] font-medium uppercase tracking-[0.25em] text-fog">
                 {CATEGORY_LABELS[vehicle.category]}
@@ -387,8 +387,8 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
                     </p>
                     <p className="mt-1 text-[12px] text-fog">
                       {myBooking.status === "pending"
-                        ? "Waiting for confirmation — you can cancel while it's pending."
-                        : "Confirmed — cancel before the pick-up date if your plans change."}
+                        ? "Waiting for confirmation, you can cancel while it's pending."
+                        : "Confirmed, cancel before the pick-up date if your plans change."}
                     </p>
                     {isCancellable(myBooking) ? (
                       <button
@@ -484,7 +484,7 @@ export default function VehicleDetailView({ slug }: { slug: string }) {
           >
             <Image
               src={photos[lightbox]}
-              alt={`${vehicle.name} — photo ${lightbox + 1}`}
+              alt={`${vehicle.name}, photo ${lightbox + 1}`}
               fill
               sizes="92vw"
               className="object-contain"

@@ -103,7 +103,7 @@ export default function AdminOverview() {
     return () => mm.revert();
   }, []);
 
-  // Live stats — fleet size (public API) and customer count (admin API).
+  // Live stats, fleet size (public API) and customer count (admin API).
   useEffect(() => {
     let cancelled = false;
     vehicleApi
@@ -156,23 +156,23 @@ export default function AdminOverview() {
           {greeting()}, <span className="italic text-accent">{user.name.split(" ")[0]}.</span>
         </h1>
         <p className="mt-3 text-[15px] text-fog">
-          The whole operation at a glance — fleet, bookings, and customers.
+          The whole operation at a glance, fleet, bookings, and customers.
         </p>
       </header>
 
       <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Fleet Size" value={fleetSize ?? "—"} hint="Vehicles listed for rent" />
+        <StatCard label="Fleet Size" value={fleetSize ?? "-"} hint="Vehicles listed for rent" />
         <StatCard
           label="Active Bookings"
-          value={activeBookings ?? "—"}
+          value={activeBookings ?? "-"}
           hint="Pending & confirmed rentals"
         />
         <StatCard
           label="Wash Requests"
-          value={pendingWashes ?? "—"}
+          value={pendingWashes ?? "-"}
           hint={pendingWashes ? "Waiting on your approval" : "Nothing to approve"}
         />
-        <StatCard label="Customers" value={customerCount ?? "—"} hint="Registered accounts" />
+        <StatCard label="Customers" value={customerCount ?? "-"} hint="Registered accounts" />
       </section>
 
       <section className="mt-10">

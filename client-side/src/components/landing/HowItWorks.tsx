@@ -55,7 +55,7 @@ export default function HowItWorks() {
           ]}
         />
         <p data-fade className="max-w-sm text-sm leading-relaxed text-fog md:text-base">
-          Booking a vehicle or a wash takes minutes — everything happens online, confirmation is
+          Booking a vehicle or a wash takes minutes, everything happens online, confirmation is
           instant.
         </p>
       </div>

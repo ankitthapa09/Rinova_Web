@@ -5,9 +5,9 @@ import { env } from '@/config/env';
 
 export type UserRole = 'user' | 'admin';
 
-/** Reset link lifetime — short since it sits in an inbox. */
+/** Reset link lifetime, short since it sits in an inbox. */
 export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
-/** Verification link lifetime — lower stakes, so it can live longer. */
+/** Verification link lifetime, lower stakes, so it can live longer. */
 export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 /** How many previous passwords a new one may not repeat. */
 export const PASSWORD_HISTORY_LIMIT = 5;
@@ -17,13 +17,13 @@ export const ACCOUNT_LOCK_MS = 15 * 60 * 1000;
 /** Max sessions kept per user; oldest is evicted past this. */
 export const MAX_SESSIONS = 10;
 /** How long the just-replaced token stays acceptable after a rotation. Two tabs
- *  reloading together send the same token at the same moment; without this the
- *  slower one looks like a replay and would revoke every session. */
+ * reloading together send the same token at the same moment; without this the
+ * slower one looks like a replay and would revoke every session. */
 export const ROTATION_GRACE_MS = 20 * 1000;
 
 /** One active refresh token. Only its hash is stored, never the token itself. */
 export interface RefreshSession {
-  /** Rotation chain id — constant across rotations, new per login. */
+  /** Rotation chain id, constant across rotations, new per login. */
   family: string;
   tokenHash: string;
   /** The hash this one replaced, honoured briefly (see ROTATION_GRACE_MS). */
@@ -37,40 +37,40 @@ export interface RefreshSession {
 export interface IUser {
   name: string;
   email: string;
-  /** Optional: OAuth (Google) accounts sign up without contact details and
-   *  fill them in later from their profile. */
+  /** Optional, OAuth (Google) accounts sign up without contact details and
+   * fill them in later from their profile. */
   phone?: string;
   address?: string;
   profileImageUrl?: string;
   profileImagePublicId?: string;
-  /** Optional: a Google-only account has no password until it sets one. */
+  /** Optional, a Google-only account has no password until it sets one. */
   password?: string;
   /** How the account was created / can sign in. */
   authProvider: 'local' | 'google';
-  /** Google's stable subject id — set once a Google account is linked. */
+  /** Google's stable subject id, set once a Google account is linked. */
   googleId?: string;
   role: UserRole;
   isEmailVerified: boolean;
   lastLoginAt?: Date;
-  /** SHA-256 of the reset token — never the token itself. */
+  /** SHA-256 of the reset token, never the token itself. */
   passwordResetToken?: string;
   passwordResetExpires?: Date;
   /** Tokens minted before this are rejected, logging old sessions out. */
   passwordChangedAt?: Date;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
-  /** Recent bcrypt hashes, newest first — blocks password reuse. */
+  /** Recent bcrypt hashes, newest first, blocks password reuse. */
   passwordHistory?: string[];
   failedLoginAttempts?: number;
   lockUntil?: Date;
   /** One session per signed-in device, rotated on every refresh. */
   refreshSessions?: RefreshSession[];
-  /** Only true once a code has been verified — a scanned-but-unconfirmed
-   *  secret must never gate login, or a mis-scan locks the user out. */
+  /** Only true once a code has been verified, a scanned-but-unconfirmed
+   * secret must never gate login, or a mis-scan locks the user out. */
   twoFactorEnabled: boolean;
   /** Base32 TOTP secret. Shared with the authenticator app and nothing else. */
   twoFactorSecret?: string;
-  /** bcrypt hashes of unused recovery codes — the way back in without a phone. */
+  /** bcrypt hashes of unused recovery codes, the way back in without a phone. */
   twoFactorRecoveryCodes?: string[];
   /** Last accepted TOTP step, so a code can't be replayed inside its window. */
   twoFactorLastUsedStep?: number;
@@ -114,7 +114,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       // Optional so Google sign-ups (no phone yet) can be created; local signups
       // are still forced to provide it by the register validator.
       trim: true,
-      // Nepali mobile numbers: 10 digits starting 97/98 (basic shape check;
+      // Nepali mobile numbers, 10 digits starting 97/98 (basic shape check;
       // the request validator enforces the stricter rule with clear messages)
       match: [/^9[78]\d{8}$/, 'Enter a valid 10-digit mobile number'],
     },
@@ -148,7 +148,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
       type: String,
       select: false,
       index: true,
-      sparse: true, // only indexes docs that have one — locals stay unindexed
+      sparse: true, // only indexes docs that have one, locals stay unindexed
     },
     role: {
       type: String,
@@ -270,7 +270,7 @@ userSchema.pre('save', async function hashPassword() {
 });
 
 userSchema.method('comparePassword', async function comparePassword(candidate: string) {
-  // A Google-only account has no password — nothing can match it.
+  // A Google-only account has no password, nothing can match it.
   if (!this.password) return false;
   return bcrypt.compare(candidate, this.password);
 });
@@ -286,7 +286,7 @@ userSchema.method('isPasswordReused', async function isPasswordReused(candidate:
 });
 
 userSchema.method('createPasswordResetToken', function createPasswordResetToken() {
-  // 32 random bytes — unguessable, and never stored in this form.
+  // 32 random bytes, unguessable, and never stored in this form.
   const raw = crypto.randomBytes(32).toString('hex');
   this.passwordResetToken = crypto.createHash('sha256').update(raw).digest('hex');
   this.passwordResetExpires = new Date(Date.now() + PASSWORD_RESET_TTL_MS);

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import NotificationsView from "@/components/notifications/NotificationsView";
 
 export const metadata: Metadata = {
-  title: "Notifications — Rinova Admin",
+  title: "Notifications | Rinova Admin",
   description: "Booking and wash activity across the desk.",
 };
 

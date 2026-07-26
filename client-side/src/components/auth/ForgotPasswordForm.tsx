@@ -83,7 +83,7 @@ export default function ForgotPasswordForm({ siteKey }: ForgotPasswordFormProps)
         </span>
         <p className="text-[15px] leading-relaxed text-fog">
           If <span className="text-cream">{email}</span> is registered, a reset link is on its way.
-          It works for the next 30 minutes — check the spam folder too.
+          It works for the next 30 minutes, check the spam folder too.
         </p>
         <Link href="/login" className="nav-link text-[13px] font-medium text-accent">
           Back to sign in

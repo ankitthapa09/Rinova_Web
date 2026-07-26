@@ -16,7 +16,7 @@ const TOLERANCE_SECONDS = 30;
 
 export interface TotpVerifyResult {
   valid: boolean;
-  /** The time-step the code belonged to — store it to block replay of that code. */
+  /** The time-step the code belonged to, store it to block replay of that code. */
   step?: number;
 }
 
@@ -26,7 +26,7 @@ export const totpService = {
     return generateSecret();
   },
 
-  /** The otpauth:// URI the QR code encodes — label ties it to this account. */
+  /** The otpauth:// URI the QR code encodes, label ties it to this account. */
   keyUri(email: string, secret: string): string {
     return generateURI({ strategy: 'totp', issuer: ISSUER, label: email, secret });
   },
@@ -39,10 +39,10 @@ export const totpService = {
   /**
    * Checks a 6-digit code. `afterStep` rejects any code from that step or
    * earlier, so a code already used can't be replayed inside its window.
-   */
+ */
   async verify(token: string, secret: string, afterStep?: number): Promise<TotpVerifyResult> {
     // otplib returns timeStep at runtime but doesn't surface it on the success
-    // type — read it through a narrow cast.
+    // type, read it through a narrow cast.
     const result = (await verify({
       token,
       secret,
@@ -55,7 +55,7 @@ export const totpService = {
   /**
    * Ten recovery codes. Returns the plaintext (shown once) and their bcrypt
    * hashes (all we keep), formatted in two blocks for easy reading, e.g. "3f9a-c1b7".
-   */
+ */
   async generateRecoveryCodes(): Promise<{ plain: string[]; hashed: string[] }> {
     const plain = Array.from({ length: RECOVERY_CODE_COUNT }, () => {
       const raw = crypto.randomBytes(4).toString('hex');

@@ -6,14 +6,14 @@ const specsSchema = z.object({
   transmission: z.enum(['Manual', 'Automatic']).optional(),
   fuel: z.string({ error: 'Fuel type is required' }).trim().min(1, 'Fuel type is required'),
   topSpeed: z.string().trim().max(20).optional(),
-  // Combustion only — sent when the fuel type has an engine
+  // Combustion only, sent when the fuel type has an engine
   engineCC: z.coerce.number().min(0).max(10000).optional(),
-  // EV-only — the form sends these only when fuel is Electric
+  // EV-only, the form sends these only when fuel is Electric
   range: z.coerce.number().min(0).max(2000).optional(),
   batteryCapacity: z.coerce.number().min(0).max(500).optional(),
 });
 
-/** Admin create — slug is generated server-side from the name, never accepted */
+/** Admin create, slug is generated server-side from the name, never accepted */
 export const createVehicleSchema = z.object({
   name: z
     .string({ error: 'Name is required' })
@@ -25,13 +25,13 @@ export const createVehicleSchema = z.object({
   pricePerDay: z.coerce.number({ error: 'Price per day is required' }).min(0),
   specs: specsSchema,
   imageUrl: z.string({ error: 'Image URL is required' }).trim().min(1),
-  // Optional photo gallery — images[0] becomes the cover (the model keeps
+  // Optional photo gallery, images[0] becomes the cover (the model keeps
   // imageUrl in sync). Capped at 4 to match the schema rule.
   images: z
     .array(z.string().trim().min(1, 'Image URLs cannot be empty'))
     .max(4, 'A vehicle can have at most 4 photos')
     .optional(),
-  // 3D model is optional — vehicles without one show their cover photo instead
+  // 3D model is optional, vehicles without one show their cover photo instead
   modelUrl: z.string().trim().min(1).optional(),
   modelLength: z.coerce.number().min(0.5).max(20).optional(),
   featured: z.boolean().optional(),
@@ -39,8 +39,8 @@ export const createVehicleSchema = z.object({
   isAvailable: z.boolean().optional(),
 });
 
-/** Admin update — any subset of the creatable fields. `modelUrl: null`
- *  explicitly removes the 3D model; omitting it leaves the model untouched. */
+/** Admin update, any subset of the creatable fields. `modelUrl, null`
+ * explicitly removes the 3D model; omitting it leaves the model untouched. */
 export const updateVehicleSchema = createVehicleSchema
   .partial()
   .extend({
@@ -51,7 +51,7 @@ export const updateVehicleSchema = createVehicleSchema
     message: 'Provide at least one field to update',
   });
 
-/** Public list query — ?category=car */
+/** Public list query, ?category=car */
 export const listVehiclesQuerySchema = z.object({
   category: z.enum(VEHICLE_CATEGORIES).optional(),
 });

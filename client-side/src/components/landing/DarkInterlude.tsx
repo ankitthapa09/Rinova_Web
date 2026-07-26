@@ -14,7 +14,7 @@ const BEATS = [
     eyebrow: "The foam bath",
     line: (
       <>
-        Foam that lifts dirt — <em className="italic text-[#BFE3FF]">never grinds it.</em>
+        Foam that lifts dirt, <em className="italic text-[#BFE3FF]">never grinds it.</em>
       </>
     ),
     features: ["pH-neutral snow foam", "Zero swirl marks", "Eco products only"],
@@ -60,7 +60,7 @@ const SERVICES = [
   "INTERIOR SHAMPOO", "ENGINE BAY DETAIL", "TYRE & RIM SHINE", "GLASS TREATMENT",
 ];
 
-// Seamless wave: covers the 1600 viewBox at both extremes of the -1200 drift.
+// Seamless wave, covers the 1600 viewBox at both extremes of the -1200 drift.
 function wavePath(amp: number, lift: number): string {
   let d = `M0 ${40 + lift}`;
   for (let x = 0; x < 3000; x += 300) {
@@ -69,7 +69,7 @@ function wavePath(amp: number, lift: number): string {
   return `${d} L3000 700 L0 700 Z`;
 }
 
-// Deterministic droplets (no Math.random → no hydration mismatch).
+// Deterministic droplets (no Math.random to no hydration mismatch).
 const DROPS = Array.from({ length: 9 }, (_, i) => ({
   left: 12 + ((i * 173) % 76),
   delay: (i % 5) * 0.7,
@@ -106,7 +106,7 @@ export default function DarkInterlude() {
       const tweens: gsap.core.Tween[] = [];
       const acts = BEATS.length;
 
-      // ── Ambient loops ──
+      // Ambient loops
       q<SVGGElement>(".xp-wave").forEach((el, i) => {
         tweens.push(gsap.to(el, { x: -1200, duration: i === 0 ? 8 : 12, ease: "none", repeat: -1 }));
       });
@@ -134,11 +134,11 @@ export default function DarkInterlude() {
       tweens.push(...loops);
       const skews = strips.map((el) => gsap.quickTo(el, "skewX", { duration: 0.4, ease: "power2.out" }));
 
-      // ── Master scrub ──
+      // Master scrub
       const beats = q<HTMLElement>(".exp-beat");
       const bgShots = q<HTMLElement>(".bg-shot");
 
-      // Opening state: beat 1 live, its backdrop open.
+      // Opening state, beat 1 live, its backdrop open.
       gsap.set(beats[0], { opacity: 1, y: 0, filter: "blur(0px)" });
       bgShots.forEach((el, i) => gsap.set(el, { clipPath: i === 0 ? "inset(0% 0% 0% 0%)" : "inset(100% 0% 0% 0%)" }));
 
@@ -181,14 +181,14 @@ export default function DarkInterlude() {
         );
       });
 
-      // The dock breathes while it waits (not scrubbed — an ambient float).
+      // The dock breathes while it waits (not scrubbed, an ambient float).
       tweens.push(
         gsap.to(q(".beat-dock"), { y: -7, duration: 2.6, ease: "sine.inOut", yoyo: true, repeat: -1 }),
       );
 
       for (let i = 1; i < acts; i++) {
         const at = i - 0.25;
-        // glass card swap: lift out, settle in with a slight scale
+        // glass card swap, lift out, settle in with a slight scale
         tl.to(beats[i - 1], { opacity: 0, y: -30, scale: 0.96, filter: "blur(6px)", duration: 0.35, ease: EASE }, at)
           .fromTo(
             beats[i],
@@ -203,11 +203,11 @@ export default function DarkInterlude() {
             { y: 0, opacity: 1, duration: 0.22, stagger: 0.12, ease: EASE },
             at + 0.3,
           )
-          // the next faded backdrop wipes up — hard edge, no overlap
+          // the next faded backdrop wipes up, hard edge, no overlap
           .to(bgShots[i], { clipPath: "inset(0% 0% 0% 0%)", duration: 0.55, ease: "power1.inOut" }, at);
       }
 
-      // Full tide: the letters gleam.
+      // Full tide, the letters gleam.
       tl.to(q(".xp-bloom"), { opacity: 0.55, duration: 0.4 }, acts - 0.5);
 
       return () => {

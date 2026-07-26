@@ -12,8 +12,8 @@ export const generalLimiter = rateLimit({
   message: limited,
 });
 
-// Much stricter on credential endpoints: only failed attempts count, so a
-// brute-force gets cut off after a handful of tries per window.
+// stricter on credential endpoints, only failed attempts count so a brute force
+// gets cut off after a few tries per window
 export const authLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   limit: env.LOGIN_RATE_LIMIT_MAX,
@@ -23,10 +23,7 @@ export const authLimiter = rateLimit({
   message: limited,
 });
 
-// Login has its own per-account lockout (12 failed tries → 15-min lock), which
-// is the real brake here — so this IP limiter is set high enough to let that
-// lockout message surface instead of a generic "too many requests". Only failed
-// attempts count; a script hammering many accounts from one IP still gets cut off.
+// login also has a per-account lockout (12 tries then 15 min) which is the real brake, so this limiter sits high enough to let that message show
 export const loginLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   limit: 20,
@@ -36,8 +33,8 @@ export const loginLimiter = rateLimit({
   message: limited,
 });
 
-// Reset endpoints count every request — forgot-password always answers 200,
-// so a failures-only limiter would never throttle it.
+// reset endpoints count every request since forgot-password always answers 200,
+// so a failures-only limiter would never throttle it
 export const resetLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   limit: env.LOGIN_RATE_LIMIT_MAX,

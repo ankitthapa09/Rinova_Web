@@ -24,7 +24,7 @@ const VEHICLE_ICONS: Record<VehicleCategory, typeof Car> = {
   bus: Bus,
 };
 
-/** 'Sat, Jul 18 · 10:30 AM' — the day and the arrival time together. */
+/** 'Sat, Jul 18 · 10:30 AM', the day and the arrival time together. */
 export function washWhen(order: WashOrder): string {
   const day = new Date(order.scheduledDate).toLocaleDateString("en-US", {
     weekday: "short",
@@ -34,7 +34,7 @@ export function washWhen(order: WashOrder): string {
   return `${day} · ${formatSlot(order.slot)}`;
 }
 
-/** The moment the wash begins — the deadline for calling it off. */
+/** The moment the wash begins, the deadline for calling it off. */
 function washStart(order: WashOrder): number {
   const [hours, minutes] = order.slot.split(":").map(Number);
   const at = new Date(order.scheduledDate);
@@ -49,7 +49,7 @@ export function isWashCancellable(order: WashOrder): boolean {
 }
 
 /** Rows of the customer's own wash orders, with cancel. Parent owns the data;
- *  onChanged fires after a successful cancel so it can refetch. */
+ * onChanged fires after a successful cancel so it can refetch. */
 export default function WashesList({
   orders,
   onChanged,

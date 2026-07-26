@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ProfileView from "@/components/dashboard/ProfileView";
 
 export const metadata: Metadata = {
-  title: "Profile — Rinova",
+  title: "Profile | Rinova",
   description: "Your account details and security settings.",
 };
 

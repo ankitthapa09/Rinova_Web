@@ -10,7 +10,7 @@ export type WashOrderStatus =
   | "declined"
   | "cancelled";
 
-/** One item on the wash menu — priced per vehicle size. */
+/** One item on the wash menu, priced per vehicle size. */
 export interface WashPackage {
   id: WashPackageId;
   name: string;
@@ -72,8 +72,8 @@ export interface CreateWashOrderInput {
   notes?: string;
 }
 
-/** Prices are never sent to the server — it looks them up itself. This is only
- *  so the form can show the customer what they're about to agree to. */
+/** Prices are never sent to the server, it looks them up itself. This is only
+ * so the form can show the customer what they're about to agree to. */
 export function washPriceFor(
   packages: WashPackage[],
   packageId: WashPackageId,
@@ -82,7 +82,7 @@ export function washPriceFor(
   return packages.find((pkg) => pkg.id === packageId)?.prices[vehicleType];
 }
 
-/** '14:00' → '2:00 PM' */
+/** '14:00' to '2:00 PM' */
 export function formatSlot(slot: string): string {
   const [hours, minutes] = slot.split(":").map(Number);
   const period = (hours as number) >= 12 ? "PM" : "AM";
@@ -91,7 +91,7 @@ export function formatSlot(slot: string): string {
 }
 
 export const washApi = {
-  // ── Public ───────────────────────────────────────────────
+  // Public
   catalogue(): Promise<WashCatalogue> {
     return request<WashCatalogue>("/wash/packages");
   },
@@ -103,7 +103,7 @@ export const washApi = {
     return slots;
   },
 
-  // ── Customer ─────────────────────────────────────────────
+  // Customer
   async create(input: CreateWashOrderInput): Promise<WashOrder> {
     const { order } = await request<{ order: WashOrder }>("/wash/orders", {
       method: "POST",
@@ -124,7 +124,7 @@ export const washApi = {
     return order;
   },
 
-  // ── Admin ────────────────────────────────────────────────
+  // Admin
   async listAll(): Promise<WashOrder[]> {
     const { orders } = await request<{ orders: WashOrder[] }>("/wash/orders");
     return orders;

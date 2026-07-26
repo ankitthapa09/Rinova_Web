@@ -20,7 +20,7 @@ const styles: Record<NonNullable<MagneticButtonProps["variant"]>, string> = {
 
 /**
  * Pill button that subtly follows the cursor (max ~8px) and swaps its
- * label upward on hover — the duplicate label slides in from below.
+ * label upward on hover, the duplicate label slides in from below.
  */
 export default function MagneticButton({
   href,

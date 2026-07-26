@@ -43,7 +43,7 @@ export interface Booking {
 }
 
 export const bookingApi = {
-  // ── Customer ─────────────────────────────────────────────
+  // Customer
   async create(input: { vehicleSlug: string; startDate: string; endDate: string }): Promise<Booking> {
     const { booking } = await request<{ booking: Booking }>("/bookings", {
       method: "POST",
@@ -64,7 +64,7 @@ export const bookingApi = {
     return booking;
   },
 
-  // ── Admin ────────────────────────────────────────────────
+  // Admin
   async listAll(): Promise<Booking[]> {
     const { bookings } = await request<{ bookings: Booking[] }>("/bookings");
     return bookings;

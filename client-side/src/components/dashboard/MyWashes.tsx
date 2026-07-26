@@ -48,7 +48,7 @@ export default function MyWashes() {
             </span>
             <p className="mt-4 font-serif text-xl text-cream">No washes yet</p>
             <p className="mt-2 max-w-[300px] text-sm leading-relaxed text-fog">
-              Book a wash and it will show up here with its status — right up to the day.
+              Book a wash and it will show up here with its status, right up to the day.
             </p>
             <Link href="/wash/book" className="nav-link mt-5 text-[13px] font-medium text-accent">
               Book a wash

@@ -34,7 +34,7 @@ export default function ProfileView() {
         </p>
       </header>
 
-      {/* Account details — editable; email stays locked. */}
+      {/* Account details, editable; email stays locked. */}
       <section className="mt-10">
         <AccountCard />
       </section>

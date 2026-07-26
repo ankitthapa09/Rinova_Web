@@ -2,11 +2,8 @@ import mongoose from 'mongoose';
 import { env } from '@/config/env';
 import { logger } from '@/config/logger';
 
-/**
- * Connects to MongoDB. Called once during bootstrap, before the HTTP server
- * starts listening — a failed connection should abort startup, not serve a
- * broken API.
- */
+// connect to mongo at startup, before the server listens. a failed connect
+// should abort boot rather than serve a broken api
 export async function connectDatabase(): Promise<void> {
   mongoose.set('strictQuery', true);
 
@@ -21,7 +18,7 @@ export async function connectDatabase(): Promise<void> {
   logger.info('MongoDB connected');
 }
 
-/** Closes the connection gracefully — used on shutdown signals. */
+// close the connection on shutdown
 export async function disconnectDatabase(): Promise<void> {
   await mongoose.connection.close();
   logger.info('MongoDB connection closed');

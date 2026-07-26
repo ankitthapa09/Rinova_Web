@@ -7,15 +7,8 @@ import { toast } from "@/components/ui/toast";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 
-/**
- * Landing page for the Google OAuth redirect. The server has already set the
- * refresh cookie (or, for a 2FA account, handed us a challenge in the URL).
- *
- *  - ?error=<code>  → show why it failed, offer a way back
- *  - ?twofa=<token> → the account has 2FA on; finish with a code
- *  - ?ok=1          → exchange the cookie for a session and route onward
- */
-
+// Landing page for the Google sign-in redirect. The server has already set the
+// refresh cookie, or passed a 2fa challenge in the url when the account needs one.
 const ERROR_MESSAGES: Record<string, string> = {
   denied: "Google sign-in was cancelled.",
   state: "That sign-in link expired or didn't check out. Please try again.",
@@ -38,8 +31,8 @@ export default function OAuthCallback() {
     router.replace(user.role === "admin" ? "/admin" : "/dashboard");
   };
 
-  // Plain success: the refresh cookie is set — turn it into a live session, then
-  // route. Runs once (refresh() is single-flight, but the ref guards StrictMode).
+  // Cookie is set, so swap it for a session then route. The ref keeps React's
+  // StrictMode from running this twice.
   useEffect(() => {
     if (error || twofa || ran.current) return;
     ran.current = true;
@@ -56,7 +49,7 @@ export default function OAuthCallback() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, twofa]);
 
-  // ── Error ────────────────────────────────────────────────
+  // failed or cancelled
   if (error) {
     return (
       <Shell>
@@ -74,7 +67,7 @@ export default function OAuthCallback() {
     );
   }
 
-  // ── 2FA required ──────────────────────────────────────────
+  // account has 2fa on, finish with a code
   if (twofa) {
     const onSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -91,7 +84,7 @@ export default function OAuthCallback() {
         land(user);
       } catch (err) {
         setStatus("idle");
-        // A dead challenge (expired/used) means restarting sign-in.
+        // dead challenge means starting over from the login page
         if (err instanceof ApiError && err.status === 401) {
           toast.error("That sign-in session expired. Please sign in again.");
           router.replace("/login");
@@ -133,7 +126,7 @@ export default function OAuthCallback() {
     );
   }
 
-  // ── Working (exchanging the cookie) ───────────────────────
+  // still exchanging the cookie
   return (
     <Shell>
       <p className="text-sm text-fog">Completing sign-in…</p>
@@ -141,7 +134,7 @@ export default function OAuthCallback() {
   );
 }
 
-/** Minimal centred frame — the (auth) layout has no chrome of its own. */
+// minimal centered frame, the (auth) layout has no chrome of its own
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-night px-6 text-center">

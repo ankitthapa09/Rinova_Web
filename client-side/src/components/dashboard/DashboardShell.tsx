@@ -10,7 +10,7 @@ import { authApi, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 
-// The shell resolves the session once and shares it — child pages read it from
+// The shell resolves the session once and shares it, child pages read it from
 // context instead of re-running the restore.
 const DashboardUserContext = createContext<ApiUser | null>(null);
 
@@ -95,7 +95,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       toast.error("Please sign in to view your dashboard.");
       router.replace("/login");
     } else if (user.role === "admin") {
-      // Admins have their own home — keep the two dashboards from mixing.
+      // Admins have their own home, keep the two dashboards from mixing.
       router.replace("/admin");
     }
   }, [loading, user, router]);
@@ -126,7 +126,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <div className="relative flex min-h-[100svh]">
         <Cursor />
 
-        {/* ── Sidebar ─────────────────────────────────────── */}
+        {/* Sidebar */}
         <aside className="sticky top-0 hidden h-[100svh] w-[250px] shrink-0 flex-col border-r border-line px-6 py-8 lg:flex">
           <div className="flex items-center justify-between">
             <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
@@ -168,7 +168,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        {/* ── Main ────────────────────────────────────────── */}
+        {/* Main */}
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div aria-hidden className="glow-orb absolute -right-[20%] -top-[30%] h-[50vw] w-[50vw]" />
 

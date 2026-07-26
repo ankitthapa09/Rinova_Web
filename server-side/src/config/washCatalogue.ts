@@ -1,12 +1,7 @@
 import { VEHICLE_CATEGORIES, type VehicleCategory } from '@/models/vehicle.model';
 
-/**
- * The wash shop's fixed menu. This is deliberately code, not a database
- * collection: prices and slots change once in a blue moon, and keeping them
- * here means the server can price an order without a lookup — and the browser
- * can never talk us into a cheaper number.
- */
-
+// the wash menu, kept in code not the db. the server prices every order from
+// here so the browser can never push a cheaper number
 export const WASH_PACKAGE_IDS = ['basic', 'deep', 'detail'] as const;
 export type WashPackageId = (typeof WASH_PACKAGE_IDS)[number];
 
@@ -14,7 +9,7 @@ export interface WashPackage {
   id: WashPackageId;
   name: string;
   duration: string;
-  /** Price in NPR, per vehicle size — a bus takes far more foam than a bike */
+  // price in NPR by vehicle size
   prices: Record<VehicleCategory, number>;
   features: string[];
   popular?: boolean;
@@ -24,7 +19,7 @@ export const WASH_PACKAGES: readonly WashPackage[] = [
   {
     id: 'basic',
     name: 'Basic Wash',
-    duration: '20–30 min',
+    duration: '20-30 min',
     prices: { bike: 150, car: 300, suv: 400, van: 500, bus: 900 },
     features: [
       'Exterior foam wash',
@@ -36,7 +31,7 @@ export const WASH_PACKAGES: readonly WashPackage[] = [
   {
     id: 'deep',
     name: 'Deep Clean',
-    duration: '60–90 min',
+    duration: '60-90 min',
     prices: { bike: 400, car: 800, suv: 1000, van: 1200, bus: 2000 },
     features: [
       'Everything in Basic',
@@ -50,7 +45,7 @@ export const WASH_PACKAGES: readonly WashPackage[] = [
   {
     id: 'detail',
     name: 'Full Detail',
-    duration: '3–4 hrs',
+    duration: '3-4 hrs',
     prices: { bike: 1200, car: 2500, suv: 3000, van: 3500, bus: 6000 },
     features: [
       'Everything in Deep Clean',
@@ -72,7 +67,7 @@ export const WASH_BAYS_PER_SLOT = 3;
 /** How far ahead the calendar opens. */
 export const WASH_MAX_DAYS_AHEAD = 60;
 
-/** The five sizes we price for — same list the fleet uses. */
+/** The five sizes we price for, same list the fleet uses. */
 export const WASH_VEHICLE_TYPES = VEHICLE_CATEGORIES;
 
 export function findWashPackage(id: WashPackageId): WashPackage | undefined {

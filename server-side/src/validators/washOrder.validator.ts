@@ -4,7 +4,7 @@ import { WASH_PACKAGE_IDS, WASH_SLOTS, WASH_MAX_DAYS_AHEAD } from '@/config/wash
 
 const DAY_MS = 86_400_000;
 
-/** Start of today — a wash may be booked for today, never for yesterday. */
+/** Start of today, a wash may be booked for today, never for yesterday. */
 function todayStart(): Date {
   const now = new Date();
   now.setHours(0, 0, 0, 0);
@@ -14,7 +14,7 @@ function todayStart(): Date {
 /**
  * A wash day is a calendar day at the garage, not an instant. Coercing
  * 'YYYY-MM-DD' with `new Date()` would read it as UTC midnight, which lands on
- * the day before once the server sits west of UTC — so we build the local day
+ * the day before once the server sits west of UTC, so we build the local day
  * explicitly and keep the shop's own calendar the source of truth.
  */
 const calendarDay = z
@@ -33,8 +33,8 @@ function slotStart(day: Date, slot: string): Date {
   return at;
 }
 
-/** Customer books a wash. Price is never accepted from the body — the service
- *  prices the order from the catalogue. */
+/** Customer books a wash. Price is never accepted from the body, the service
+ * prices the order from the catalogue. */
 export const createWashOrderSchema = z
   .object({
     packageId: z.enum(WASH_PACKAGE_IDS, { error: 'Choose a wash package' }),
@@ -75,7 +75,7 @@ export const createWashOrderSchema = z
       return;
     }
 
-    // Booking today is fine — booking a slot that has already come and gone isn't.
+    // Booking today is fine, booking a slot that has already come and gone isn't.
     if (slotStart(body.scheduledDate, body.slot) <= new Date()) {
       ctx.addIssue({
         code: 'custom',
@@ -85,15 +85,15 @@ export const createWashOrderSchema = z
     }
   });
 
-/** Admin moves an order along: approve, turn away, or mark the job done. */
+/** Admin moves an order along, approve, turn away, or mark the job done. */
 export const updateWashOrderStatusSchema = z.object({
   status: z.enum(['confirmed', 'declined', 'completed'], {
     error: 'Status must be confirmed, declined or completed',
   }),
 });
 
-/** ?date=YYYY-MM-DD — which slots still have a bay free that day. Read as the
- *  same calendar day the order was written with, or the counts wouldn't match. */
+/** ?date=YYYY-MM-DD, which slots still have a bay free that day. Read as the
+ * same calendar day the order was written with, or the counts wouldn't match. */
 export const washAvailabilityQuerySchema = z.object({
   date: calendarDay,
 });

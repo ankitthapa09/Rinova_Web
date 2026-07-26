@@ -4,19 +4,18 @@ import { useLayoutEffect, type RefObject } from "react";
 import { gsap, EASE, MOTION_OK } from "./gsap";
 
 /**
- * Wires every declarative animation attribute inside a section:
- *
- * - [data-mask-group]  → child .mask-line-inner spans slide up line by line
- * - [data-curtain]     → clip-path curtain reveal; [data-curtain-img] inside
- *                        also zooms out from 1.15 → 1
- * - [data-wipe]        → left-to-right mask wipe (section numbers)
- * - [data-fade]        → fade + rise once in view (data-delay="0.2" optional)
- * - [data-stagger]     → children fade + rise with an 0.1s stagger
- * - [data-parallax]    → vertical drift, value = yPercent amplitude
- * - [data-drift]       → horizontal drift, value = xPercent amplitude
+ * Wires every declarative animation attribute inside a section *
+ * - [data-mask-group] to child .mask-line-inner spans slide up line by line
+ * - [data-curtain] to clip-path curtain reveal; [data-curtain-img] inside
+ * also zooms out from 1.15 to 1
+ * - [data-wipe] to left-to-right mask wipe (section numbers)
+ * - [data-fade] to fade + rise once in view (data-delay="0.2" optional)
+ * - [data-stagger] to children fade + rise with an 0.1s stagger
+ * - [data-parallax] to vertical drift, value = yPercent amplitude
+ * - [data-drift] to horizontal drift, value = xPercent amplitude
  *
  * Everything runs once (except parallax/drift, which scrub) and only when
- * prefers-reduced-motion allows it — the CSS initial states are gated behind
+ * prefers-reduced-motion allows it, the CSS initial states are gated behind
  * the same media query, so reduced-motion users see static content.
  */
 export function useReveal(ref: RefObject<HTMLElement>) {
@@ -61,7 +60,7 @@ export function useReveal(ref: RefObject<HTMLElement>) {
         if (img) tl.fromTo(img, { scale: 1.15 }, { scale: 1, duration: 1.4, ease: EASE }, 0);
       });
 
-      // Left → right wipes (oversized section numbers)
+      // Left to right wipes (oversized section numbers)
       root.querySelectorAll<HTMLElement>("[data-wipe]").forEach((el) => {
         gsap.to(el, {
           clipPath: "inset(0 0% 0 0)",

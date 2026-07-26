@@ -4,7 +4,7 @@ import { catchAsync } from '@/utils/catchAsync';
 import type { WashAvailabilityQuery } from '@/validators/washOrder.validator';
 
 export const washOrderController = {
-  // ── Public ───────────────────────────────────────────────
+  // Public
 
   catalogue: catchAsync(async (_req: Request, res: Response) => {
     res.status(200).json({ success: true, data: washOrderService.catalogue() });
@@ -16,7 +16,7 @@ export const washOrderController = {
     res.status(200).json({ success: true, data: { slots } });
   }),
 
-  // ── Customer ─────────────────────────────────────────────
+  // Customer
 
   create: catchAsync(async (req: Request, res: Response) => {
     const order = await washOrderService.create(req.user!.sub, req.body);
@@ -33,7 +33,7 @@ export const washOrderController = {
     res.status(200).json({ success: true, data: { order } });
   }),
 
-  // ── Admin ────────────────────────────────────────────────
+  // Admin
 
   listAll: catchAsync(async (_req: Request, res: Response) => {
     const orders = await washOrderService.listAll();

@@ -27,7 +27,7 @@ export interface AuthResult {
   tokens: TokenPair;
 }
 
-/** Password was right, but 2FA is on — the client must send a code next. */
+/** Password was right, but 2FA is on, the client must send a code next. */
 export interface TwoFactorChallenge {
   twoFactorRequired: true;
   challengeToken: string;
@@ -39,8 +39,8 @@ export interface AuthContext {
   userAgent?: string;
 }
 
-/** Mints a session (family + token pair) and stores it — the last step of every
- *  successful login, whether or not 2FA was involved. */
+/** Mints a session (family + token pair) and stores it, the last step of every
+ * successful login, whether or not 2FA was involved. */
 async function issueSession(user: UserDocument, context?: AuthContext): Promise<TokenPair> {
   const family = crypto.randomUUID();
   const tokens = tokenService.signTokenPair({ sub: user.id, role: user.role }, family);
@@ -81,7 +81,7 @@ async function verifyCaptcha(captchaToken?: string): Promise<void> {
 }
 
 /** A refresh always returns an access token; `refreshToken` is absent when the
- *  call lost a rotation race, meaning the caller's cookie must stay as it is. */
+ * call lost a rotation race, meaning the caller's cookie must stay as it is. */
 export interface RefreshResult {
   accessToken: string;
   refreshToken?: string;
@@ -148,7 +148,7 @@ export const authService = {
       );
     }
 
-    // same error whether the email or password is wrong — no enumeration
+    // same error whether the email or password is wrong, no enumeration
     if (!user || !(await user.comparePassword(input.password))) {
       if (user) {
         const failures = await userRepository.recordFailedLogin(user.id);
@@ -171,7 +171,7 @@ export const authService = {
       await userRepository.clearLoginFailures(user.id);
     }
 
-    // Password checks out — but if 2FA is on, hand back a short-lived challenge
+    // Password checks out, but if 2FA is on, hand back a short-lived challenge
     // instead of a session. No tokens until the code is verified.
     if (user.twoFactorEnabled) {
       logger.info('login awaiting 2FA', { userId: user.id });
@@ -182,11 +182,11 @@ export const authService = {
     return { user, tokens: await issueSession(user, context) };
   },
 
-  /** Google sign-in — resolves (or creates) the account behind a verified
-   *  Google profile, then returns a session, exactly like a password login.
-   *  2FA still applies: Google proves the email, not the second factor. */
+  // Google sign-in. Resolves or creates the account behind a verified Google
+  // profile, then returns a session like a normal login. 2FA still applies since
+  // Google proves the email, not the second factor.
   async loginWithGoogle(profile: GoogleProfile, context?: AuthContext): Promise<LoginOutcome> {
-    // Never trust an unverified Google email — it could be an address the Google
+    // Never trust an unverified Google email, it could be an address the Google
     // account doesn't actually own, which would let it hijack a local account.
     if (!profile.emailVerified) {
       throw AppError.unauthorized('Your Google email is not verified');
@@ -194,7 +194,7 @@ export const authService = {
 
     let user = await userRepository.findByEmail(profile.email);
     if (user) {
-      // Existing account with this email — link Google to it (idempotent).
+      // Existing account with this email, link Google to it (idempotent).
       await userRepository.linkGoogle(user.id, profile.googleId);
     } else {
       user = await userRepository.createOAuthUser({
@@ -216,8 +216,8 @@ export const authService = {
     return { user, tokens: await issueSession(user, context) };
   },
 
-  /** Second login step — verifies the TOTP (or a recovery code) against the
-   *  challenge, then issues the real session. */
+  /** Second login step, verifies the TOTP (or a recovery code) against the
+   * challenge, then issues the real session. */
   async verifyTwoFactorLogin(
     challengeToken: string,
     code: string,
@@ -247,9 +247,8 @@ export const authService = {
     return { user, tokens: await issueSession(user, context) };
   },
 
-  /** Rotating refresh — every use burns the old token and issues a new one in
-   *  the same family. A stale token replayed within a live family means theft:
-   *  every session is dropped. A missing family just means this one is over. */
+  /** Rotating refresh, every use burns the old token and issues a new one in
+   * the same family. A stale token replayed within a live family means theft   * every session is dropped. A missing family just means this one is over. */
   async refresh(refreshToken: string, context?: AuthContext): Promise<RefreshResult> {
     const { sub, family, iat } = tokenService.verifyRefreshToken(refreshToken);
 
@@ -263,17 +262,17 @@ export const authService = {
       iat * 1000 < user.passwordChangedAt.getTime()
     ) {
       logger.warn('refresh token predates password change', { userId: user.id });
-      throw AppError.unauthorized('Session expired — please sign in again');
+      throw AppError.unauthorized('Session expired, please sign in again');
     }
 
     const session = user.refreshSessions?.find((s) => s.family === family);
-    if (!session) throw AppError.unauthorized('Session expired — please sign in again');
+    if (!session) throw AppError.unauthorized('Session expired, please sign in again');
 
     const presentedHash = tokenService.hashRefreshToken(refreshToken);
     const accessToken = tokenService.signAccessToken({ sub: user.id, role: user.role });
 
     // Was this token already replaced? Only benign if it's the one we swapped
-    // out moments ago — two tabs refreshing together. Anything older is a replay.
+    // out moments ago, two tabs refreshing together. Anything older is a replay.
     if (session.tokenHash !== presentedHash) {
       const inGrace =
         session.previousTokenHash === presentedHash &&
@@ -281,11 +280,11 @@ export const authService = {
         Date.now() - session.rotatedAt.getTime() < ROTATION_GRACE_MS;
 
       if (!inGrace) {
-        logger.warn('refresh token reuse detected — revoking all sessions', { userId: user.id });
+        logger.warn('refresh token reuse detected, revoking all sessions', { userId: user.id });
         await userRepository.clearAllSessions(user.id);
-        throw AppError.unauthorized('Session expired — please sign in again');
+        throw AppError.unauthorized('Session expired, please sign in again');
       }
-      // Don't rotate: the winner's token is the live one, and re-issuing here
+      // Don't rotate, the winner's token is the live one, and re-issuing here
       // would orphan it. Fresh access token only, cookie left untouched.
       logger.info('refresh race tolerated within grace window', { userId: user.id });
       return { accessToken };
@@ -299,8 +298,8 @@ export const authService = {
       sessionRecord(tokens.refreshToken, family, context, presentedHash),
     );
 
-    // Lost the swap — another request rotated between our read and write.
-    // Same reasoning as above: keep their token, hand back access only.
+    // Lost the swap, another request rotated between our read and write.
+    // Same reasoning as above, keep their token, hand back access only.
     if (!rotated) {
       logger.info('refresh race lost the swap', { userId: user.id });
       return { accessToken };
@@ -310,7 +309,7 @@ export const authService = {
   },
 
   /** Drops this device's session so its refresh token dies immediately,
-   *  rather than whenever the JWT would have expired. Other devices unaffected. */
+   * rather than whenever the JWT would have expired. Other devices unaffected. */
   async logout(refreshToken?: string): Promise<void> {
     if (!refreshToken) return;
     try {
@@ -321,8 +320,8 @@ export const authService = {
     }
   },
 
-  /** 2FA setup step 1 — mint a secret and QR for a signed-in user. 2FA stays
-   *  OFF until a code confirms the app is set up (see confirmTwoFactor). */
+  /** 2FA setup step 1, mint a secret and QR for a signed-in user. 2FA stays
+   * OFF until a code confirms the app is set up (see confirmTwoFactor). */
   async startTwoFactorSetup(userId: string): Promise<{ secret: string; qrDataUrl: string }> {
     const user = await userRepository.findById(userId);
     if (!user) throw AppError.unauthorized('Account no longer exists');
@@ -334,8 +333,8 @@ export const authService = {
     return { secret, qrDataUrl };
   },
 
-  /** 2FA setup step 2 — verify the first code, switch 2FA on, and hand back the
-   *  one-time recovery codes (shown to the user exactly once). */
+  /** 2FA setup step 2, verify the first code, switch 2FA on, and hand back the
+   * one-time recovery codes (shown to the user exactly once). */
   async confirmTwoFactorSetup(userId: string, code: string): Promise<{ recoveryCodes: string[] }> {
     const user = await userRepository.findByIdWith2FA(userId);
     if (!user) throw AppError.unauthorized('Account no longer exists');
@@ -343,7 +342,7 @@ export const authService = {
     if (!user.twoFactorSecret) throw AppError.badRequest('Start the setup before confirming');
 
     const result = await totpService.verify(code.trim(), user.twoFactorSecret);
-    if (!result.valid) throw AppError.badRequest('That code is incorrect — try the current one');
+    if (!result.valid) throw AppError.badRequest('That code is incorrect, try the current one');
 
     const { plain, hashed } = await totpService.generateRecoveryCodes();
     await userRepository.enableTwoFactor(userId, hashed);
@@ -352,8 +351,8 @@ export const authService = {
     return { recoveryCodes: plain };
   },
 
-  /** Turns 2FA off — a fresh code (or recovery code) re-proves the second factor
-   *  first, so a hijacked session can't quietly remove it. */
+  /** Turns 2FA off, a fresh code (or recovery code) re-proves the second factor
+   * first, so a hijacked session can't quietly remove it. */
   async disableTwoFactor(userId: string, code: string): Promise<void> {
     const user = await userRepository.findByIdWith2FA(userId);
     if (!user) throw AppError.unauthorized('Account no longer exists');
@@ -371,7 +370,7 @@ export const authService = {
     logger.info('2FA disabled', { userId });
   },
 
-  /** Step 1 — request a reset link. Same response whether the email exists. */
+  /** Step 1, request a reset link. Same response whether the email exists. */
   async forgotPassword(email: string, captchaToken?: string): Promise<void> {
     await verifyCaptcha(captchaToken);
 
@@ -389,7 +388,7 @@ export const authService = {
       await emailService.passwordReset(user.email, user.name, resetUrl);
       logger.info('password reset email sent', { userId: user.id });
     } catch (err) {
-      // clear the token but keep the same response — no enumeration on mail failure
+      // clear the token but keep the same response, no enumeration on mail failure
       user.clearPasswordReset();
       await user.save({ validateBeforeSave: false });
       logger.error('password reset email failed', { userId: user.id, err });
@@ -425,7 +424,7 @@ export const authService = {
     logger.info('verification email resent', { userId: user.id });
   },
 
-  /** Self-service profile edit — contact fields only (email/role can't change here). */
+  /** Self-service profile edit, contact fields only (email/role can't change here). */
   async updateProfile(userId: string, input: UpdateProfileInput): Promise<UserDocument> {
     const user = await userRepository.updateProfile(userId, input);
     if (!user) throw AppError.unauthorized('Account no longer exists');
@@ -479,7 +478,7 @@ export const authService = {
     return issueSession(user, context);
   },
 
-  /** Step 2 — set the new password with the emailed token. Single-use. */
+  /** Step 2, set the new password with the emailed token. Single-use. */
   async resetPassword(rawToken: string, password: string): Promise<void> {
     const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
 

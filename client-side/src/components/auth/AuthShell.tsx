@@ -25,7 +25,7 @@ interface AuthShellProps {
   watermark: string;
   vehicleUrl: string;
   vehicleLength: number;
-  /** "New here?" / "Create one" — prompt under the form to swap pages */
+  /** "New here?" / "Create one", prompt under the form to swap pages */
   switchPrompt: string;
   switchLabel: string;
   switchHref: string;
@@ -98,7 +98,7 @@ export default function AuthShell({
     <div ref={rootRef} className="relative min-h-[100svh] lg:grid lg:grid-cols-[minmax(0,46%)_1fr]">
       <Cursor />
 
-      
+
       <div className="relative flex min-h-[100svh] flex-col px-6 py-8 sm:px-12 lg:px-14 xl:px-20">
         <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="glow-orb absolute -left-[30%] top-[55%] h-[80vw] w-[80vw] opacity-50 lg:opacity-30" />

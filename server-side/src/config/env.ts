@@ -8,7 +8,7 @@ const envSchema = z.object({
   // Database
   MONGO_URI: z.string().min(1, 'MONGO_URI is required'),
 
-  // JWT — secrets must be long enough to be meaningfully hard to brute force
+  // JWT, secrets must be long enough to be meaningfully hard to brute force
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
@@ -17,7 +17,7 @@ const envSchema = z.object({
   // Security
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
-  // Admin seed — credentials for the `seed:admin` script.
+  // Admin seed, credentials for the `seed:admin` script.
 
   ADMIN_EMAIL: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
@@ -25,30 +25,30 @@ const envSchema = z.object({
   ADMIN_PHONE: z.string().default('9800000000'),
   ADMIN_ADDRESS: z.string().default('Kathmandu, Nepal'),
 
-  // Cloudinary — media storage for vehicle photos and 3D models.
-  
+  // Cloudinary, media storage for vehicle photos and 3D models.
+
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
 
-  // App URL — the canonical client origin used in email links.
+  // App URL, the canonical client origin used in email links.
   CLIENT_URL: z
     .string()
     .default('http://localhost:3000')
     .transform((s) => s.split(',').map((url) => url.trim()).filter(Boolean))
     .pipe(z.array(z.url())),
 
-  // Email (SMTP) — optional in dev; auth flows degrade gracefully without it
+  // Email (SMTP), optional in dev; auth flows degrade gracefully without it
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().optional(),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().default('Rinova <no-reply@rinova.com.np>'),
 
-  // Captcha — Turnstile is used for the public auth forms when configured.
+  // Captcha, Turnstile is used for the public auth forms when configured.
   TURNSTILE_SECRET_KEY: z.string().optional(),
 
-  // OAuth (Google) — optional; the "Continue with Google" button is hidden and
+  // OAuth (Google), optional; the "Continue with Google" button is hidden and
   // the routes 404 when these are unset, so the app runs fine without them.
   // The client secret lives only here on the server, never in the browser.
   GOOGLE_CLIENT_ID: z.string().optional(),
@@ -71,7 +71,7 @@ if (!parsed.success) {
   const issues = parsed.error.issues
     .map((issue) => `  • ${issue.path.join('.')}: ${issue.message}`)
     .join('\n');
-  // Logger isn't available this early — it depends on validated config itself.
+  // Logger isn't available this early, it depends on validated config itself.
   console.error(`\n Invalid environment configuration:\n${issues}\n`);
   process.exit(1);
 }

@@ -24,7 +24,7 @@ export default function Hero() {
     mm.add(MOTION_OK, () => {
       const q = gsap.utils.selector(section);
 
-      // Entrance: characters cascade in, then the stage and supporting copy
+      // Entrance, characters cascade in, then the stage and supporting copy
       const tl = gsap.timeline({ delay: 0.15, defaults: { ease: EASE } });
       tl.to(q(".split-char"), { y: 0, rotate: 0, duration: 1.15, stagger: 0.022 }, 0)
         .fromTo(stageRef.current, { opacity: 0 }, { opacity: 1, duration: 1.8 }, 0.5)
@@ -58,7 +58,7 @@ export default function Hero() {
       <div data-hero-glow aria-hidden className="glow-orb absolute -right-[15%] -top-[25%] h-[75vw] w-[75vw]" />
       <div data-hero-glow aria-hidden className="glow-orb absolute -bottom-[35%] -left-[20%] h-[65vw] w-[65vw] opacity-60" />
 
-      {/* 3D stage — convertible center-low, orbits on scroll, tilts with cursor */}
+      {/* 3D stage, convertible center-low, orbits on scroll, tilts with cursor */}
       <div ref={stageRef} className="absolute inset-0 opacity-0">
         {gl?.webgl ? (
           <HeroScene animate={gl.animate} />
@@ -96,7 +96,7 @@ export default function Hero() {
         </h1>
 
         <p data-hero-sub className="mt-7 max-w-xl text-base leading-relaxed text-fog md:text-lg">
-          Premium vehicle rentals and professional washing — cars, bikes, vans, and more. One
+          Premium vehicle rentals and professional washing, cars, bikes, vans, and more. One
           destination.
         </p>
 

@@ -14,7 +14,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   next();
 }
 
-/** Use after requireAuth: restricts a route to the given roles. */
+/** Use after requireAuth, restricts a route to the given roles. */
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) throw AppError.unauthorized();

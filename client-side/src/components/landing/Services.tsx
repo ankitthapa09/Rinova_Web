@@ -85,7 +85,7 @@ export default function Services() {
           ]}
         />
         <p data-fade className="max-w-sm text-sm leading-relaxed text-fog md:text-base">
-          Rinova brings Kathmandu&rsquo;s vehicle rentals and professional washing together — booked
+          Rinova brings Kathmandu&rsquo;s vehicle rentals and professional washing together, booked
           online, handled by people who care.
         </p>
       </div>

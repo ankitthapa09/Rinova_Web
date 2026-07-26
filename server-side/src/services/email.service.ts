@@ -56,7 +56,7 @@ interface ThemedEmail {
 }
 
 /**
- * One themed shell for every transactional email — table-based and
+ * One themed shell for every transactional email, table-based and
  * inline-styled so it survives Gmail/Outlook, which strip <style> and flexbox.
  */
 function renderEmail(e: ThemedEmail): string {
@@ -92,7 +92,7 @@ function renderEmail(e: ThemedEmail): string {
           </div>
         </td></tr>
       </table>
-      <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${C.line}">Rinova — vehicle rentals &amp; detailing</p>
+      <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${C.line}">Rinova, vehicle rentals &amp; detailing</p>
     </td></tr>
   </table>
 </body>
@@ -102,15 +102,15 @@ function renderEmail(e: ThemedEmail): string {
 export const emailService = {
   async send(message: MailMessage): Promise<void> {
     if (!smtpConfigured()) {
-      logger.info('email (console fallback — SMTP not configured)', {
+      logger.info('email (console fallback, SMTP not configured)', {
         to: message.to,
         subject: message.subject,
       });
-      console.log('\n────────────────────── EMAIL (dev) ──────────────────────');
+      console.log('\n EMAIL (dev) ');
       console.log(`To:      ${message.to}`);
       console.log(`Subject: ${message.subject}`);
       console.log(message.text);
-      console.log('──────────────────────────────────────────────────────────\n');
+      console.log(' \n');
       return;
     }
 
@@ -118,7 +118,7 @@ export const emailService = {
     logger.info('email sent', { to: message.to, subject: message.subject });
   },
 
-  /** The reset email — the only place the raw token appears outside the inbox. */
+  /** The reset email, the only place the raw token appears outside the inbox. */
   passwordReset(to: string, name: string, resetUrl: string): Promise<void> {
     const firstName = name.split(' ')[0];
     return emailService.send({
@@ -132,10 +132,10 @@ export const emailService = {
         '',
         resetUrl,
         '',
-        "If you didn't ask for this, ignore this email — your password stays as it is.",
+        "If you didn't ask for this, ignore this email, your password stays as it is.",
       ].join('\n'),
       html: renderEmail({
-        preheader: 'Reset your Rinova password — link expires in 30 minutes.',
+        preheader: 'Reset your Rinova password, link expires in 30 minutes.',
         heading: `Hi ${firstName}, let's reset your password.`,
         intro:
           'Someone asked to reset the password for your Rinova account. If this was you, use the button below to choose a new one.',
@@ -143,7 +143,7 @@ export const emailService = {
         ctaUrl: resetUrl,
         expiryNote: 'This link works for the next 30 minutes, then it expires.',
         footer:
-          "If you didn't ask for this, ignore this email — your password stays exactly as it is.",
+          "If you didn't ask for this, ignore this email, your password stays exactly as it is.",
       }),
     });
   },
@@ -168,7 +168,7 @@ export const emailService = {
         preheader: 'Confirm your email to finish setting up your Rinova account.',
         heading: `Welcome to Rinova, ${firstName}.`,
         intro:
-          'One quick step to finish setting up your account — confirm this email address so we know it really reaches you.',
+          'One quick step to finish setting up your account, confirm this email address so we know it really reaches you.',
         ctaLabel: 'Verify email',
         ctaUrl: verifyUrl,
         expiryNote: 'This link works for the next 24 hours, then it expires.',

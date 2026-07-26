@@ -3,7 +3,7 @@ import { userService } from '@/services/user.service';
 import { catchAsync } from '@/utils/catchAsync';
 
 export const userController = {
-  // Admin 
+  // Admin
 
   list: catchAsync(async (_req: Request, res: Response) => {
     const users = await userService.list();

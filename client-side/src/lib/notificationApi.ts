@@ -25,7 +25,7 @@ export interface AppNotification {
 export interface NotificationList {
   notifications: AppNotification[];
   unreadCount: number;
-  /** Total the user has — used to compute page count. */
+  /** Total the user has, used to compute page count. */
   total: number;
 }
 

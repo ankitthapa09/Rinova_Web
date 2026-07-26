@@ -12,7 +12,7 @@ const REFRESH_COOKIE = 'refreshToken';
 const OAUTH_STATE_COOKIE = 'oauthState';
 
 // The state cookie must survive the top-level redirect *back* from Google, so it
-// is SameSite=lax — 'strict' would be dropped on that cross-site navigation and
+// is SameSite=lax, 'strict' would be dropped on that cross-site navigation and
 // every callback would fail the CSRF check. Short-lived and httpOnly regardless.
 const stateCookieOptions: CookieOptions = {
   httpOnly: true,
@@ -58,7 +58,7 @@ export const authController = {
   login: catchAsync(async (req: Request, res: Response) => {
     const outcome = await authService.login(req.body, { userAgent: req.get('user-agent') });
 
-    // 2FA on: no session yet — return the challenge and let the client ask for a code.
+    // 2FA on, no session yet, return the challenge and let the client ask for a code.
     if ('twoFactorRequired' in outcome) {
       res.status(200).json({
         success: true,
@@ -88,8 +88,8 @@ export const authController = {
     });
   }),
 
-  // ── Google OAuth ──────────────────────────────────────────
-  // Step 1: plant a random `state` in a cookie and bounce the browser to Google.
+  // Google OAuth
+  // Step 1, plant a random `state` in a cookie and bounce the browser to Google.
   googleRedirect: catchAsync(async (_req: Request, res: Response) => {
     if (!oauthService.isConfigured()) throw AppError.notFound('Google sign-in is not available');
 
@@ -98,7 +98,7 @@ export const authController = {
     res.redirect(oauthService.buildAuthUrl(state));
   }),
 
-  // Step 2: Google redirects back here. Verify state (CSRF), exchange the code,
+  // Step 2, Google redirects back here. Verify state (CSRF), exchange the code,
   // resolve the account, and hand the session to the client via a redirect.
   // Errors redirect to the client with an ?error code rather than showing JSON.
   googleCallback: catchAsync(async (req: Request, res: Response) => {
@@ -111,10 +111,10 @@ export const authController = {
     const code = typeof req.query.code === 'string' ? req.query.code : '';
     const state = typeof req.query.state === 'string' ? req.query.state : '';
     const cookieState = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
-    // One-shot: clear the state cookie whether or not it checks out.
+    // One-shot, clear the state cookie whether or not it checks out.
     res.clearCookie(OAUTH_STATE_COOKIE, { ...stateCookieOptions, maxAge: undefined });
 
-    // The state we planted must come back unchanged — otherwise it's forged.
+    // The state we planted must come back unchanged, otherwise it's forged.
     if (!code || !state || !cookieState || state !== cookieState) return fail('state');
 
     let outcome;
@@ -128,7 +128,7 @@ export const authController = {
       return fail('failed');
     }
 
-    // Account has 2FA on — pass the short-lived challenge to the client to finish.
+    // Account has 2FA on, pass the short-lived challenge to the client to finish.
     if ('twoFactorRequired' in outcome) {
       return res.redirect(`${landing}?twofa=${outcome.challengeToken}`);
     }
@@ -143,7 +143,7 @@ export const authController = {
 
     const result = await authService.refresh(token, { userAgent: req.get('user-agent') });
 
-    // No refreshToken means this call lost a rotation race — the cookie already
+    // No refreshToken means this call lost a rotation race, the cookie already
     // holds the live token, so leave it alone.
     if (result.refreshToken) {
       res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions);
@@ -173,7 +173,7 @@ export const authController = {
     await authService.resetPassword(req.body.token, req.body.password);
     res.status(200).json({
       success: true,
-      data: { message: 'Password updated — you can sign in with it now.' },
+      data: { message: 'Password updated, you can sign in with it now.' },
     });
   }),
 
@@ -181,7 +181,7 @@ export const authController = {
     await authService.verifyEmail(req.body.token);
     res.status(200).json({
       success: true,
-      data: { message: 'Email verified — thanks for confirming.' },
+      data: { message: 'Email verified, thanks for confirming.' },
     });
   }),
 
@@ -190,7 +190,7 @@ export const authController = {
     await authService.resendVerification(req.user!.sub);
     res.status(200).json({
       success: true,
-      data: { message: 'Verification email sent — check your inbox.' },
+      data: { message: 'Verification email sent, check your inbox.' },
     });
   }),
 
@@ -231,7 +231,7 @@ export const authController = {
     });
   }),
 
-  // ── 2FA management (all requireAuth) ──────────────────────
+  // 2FA management (all requireAuth)
   startTwoFactor: catchAsync(async (req: Request, res: Response) => {
     const data = await authService.startTwoFactorSetup(req.user!.sub);
     res.status(200).json({ success: true, data });

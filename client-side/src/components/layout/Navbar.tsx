@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import MagneticButton from "@/components/landing/MagneticButton";
 import NotificationBell from "@/components/notifications/NotificationBell";
@@ -15,18 +16,42 @@ function initials(name: string): string {
     .join("");
 }
 
+// links use /#section so they work from any page, scrolling in place on the
+// landing page and routing home from elsewhere
 const LINKS = [
   { label: "Fleet", href: "/#fleet" },
-  { label: "Washing", href: "#washing" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "About", href: "#about" },
-  { label: "Contact", href: "#contact" },
+  { label: "Washing", href: "/#washing" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "About", href: "/#about" },
+  { label: "Contact", href: "/#contact" },
 ];
+
+// the lenis instance SmoothScroll publishes while the landing page is mounted
+type LenisWindow = Window & {
+  __lenis?: { scrollTo: (t: Element | string, o?: { offset?: number; duration?: number }) => void };
+};
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, loading } = useAuth(true);
+  const pathname = usePathname();
+
+  // on the landing page scroll to the section in place, otherwise let the link
+  // route home where the hash gets handled on arrival
+  const handleNav = (e: React.MouseEvent, href: string) => {
+    setOpen(false);
+    const hashIndex = href.indexOf("#");
+    if (hashIndex === -1 || pathname !== "/") return;
+    const hash = href.slice(hashIndex);
+    const target = document.querySelector(hash);
+    if (!target) return;
+    e.preventDefault();
+    const lenis = (window as LenisWindow).__lenis;
+    if (lenis) lenis.scrollTo(target, { offset: -80, duration: 1.4 });
+    else target.scrollIntoView({ behavior: "smooth" });
+    window.history.replaceState(null, "", hash);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -60,7 +85,11 @@ export default function Navbar() {
         <ul className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-9 lg:flex">
           {LINKS.map((link) => (
             <li key={link.href}>
-              <Link href={link.href} className="nav-link text-[13px] font-medium text-cream/70 hover:text-cream">
+              <Link
+                href={link.href}
+                onClick={(e) => handleNav(e, link.href)}
+                className="nav-link text-[13px] font-medium text-cream/70 hover:text-cream"
+              >
                 {link.label}
               </Link>
             </li>
@@ -74,7 +103,7 @@ export default function Navbar() {
             <NotificationBell />
             <Link
               href="/dashboard"
-              title={`${user.name} — dashboard`}
+              title={`${user.name}, dashboard`}
               className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-accent text-[13px] font-medium text-night transition-shadow duration-300 hover:shadow-glow"
             >
               {user.profileImageUrl ? (
@@ -120,7 +149,7 @@ export default function Navbar() {
             <li key={link.href} className="overflow-hidden">
               <Link
                 href={link.href}
-                onClick={() => setOpen(false)}
+                onClick={(e) => handleNav(e, link.href)}
                 className={`block font-serif text-5xl leading-[1.15] text-cream transition-[transform,opacity] duration-700 ease-expo ${
                   open ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
                 }`}

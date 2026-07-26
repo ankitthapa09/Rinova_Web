@@ -13,7 +13,7 @@ export interface AccessTokenPayload {
 
 export interface RefreshTokenPayload {
   sub: string;
-  /** Rotation chain id — constant as the token rotates. */
+  /** Rotation chain id, constant as the token rotates. */
   family: string;
   iat?: number;
 }
@@ -39,15 +39,15 @@ export const tokenService = {
     };
   },
 
-  /** Access token alone — for a refresh that loses a rotation race and so must
-   *  not mint a new refresh token. */
+  /** Access token alone, for a refresh that loses a rotation race and so must
+   * not mint a new refresh token. */
   signAccessToken(payload: AccessTokenPayload): string {
     return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
       expiresIn: env.JWT_ACCESS_EXPIRES_IN as SignOptions['expiresIn'],
     });
   },
 
-  /** What we store — the raw token never touches the database. */
+  /** What we store, the raw token never touches the database. */
   hashRefreshToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
   },
@@ -60,7 +60,7 @@ export const tokenService = {
   },
 
   /** Short-lived proof that a password was correct, awaiting the 2FA code. The
-   *  `twofa` claim keeps it from being used as an ordinary access token. */
+   * `twofa` claim keeps it from being used as an ordinary access token. */
   sign2faChallenge(userId: string): string {
     return jwt.sign({ sub: userId, twofa: true }, env.JWT_ACCESS_SECRET, { expiresIn: '5m' });
   },
@@ -71,7 +71,7 @@ export const tokenService = {
       if (!payload.twofa) throw new Error('not a 2fa challenge');
       return { sub: payload.sub };
     } catch {
-      throw AppError.unauthorized('Your verification session expired — sign in again');
+      throw AppError.unauthorized('Your verification session expired, sign in again');
     }
   },
 

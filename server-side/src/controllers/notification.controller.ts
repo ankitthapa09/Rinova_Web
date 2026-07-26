@@ -3,7 +3,7 @@ import { notificationService } from '@/services/notification.service';
 import { DEFAULT_LIMIT, MAX_LIMIT } from '@/repositories/notification.repository';
 import { catchAsync } from '@/utils/catchAsync';
 
-// Reads ?limit, ignoring junk — clamped to a sane range so it can't be abused.
+// Reads ?limit, ignoring junk, clamped to a sane range so it can't be abused.
 function parseLimit(raw: unknown): number {
   const n = Number(raw);
   if (!Number.isFinite(n)) return DEFAULT_LIMIT;
@@ -16,7 +16,7 @@ function parsePage(raw: unknown): number {
   return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
-// Every route here runs behind requireAuth — req.user is always set.
+// Every route here runs behind requireAuth, req.user is always set.
 export const notificationController = {
   list: catchAsync(async (req: Request, res: Response) => {
     const limit = parseLimit(req.query.limit);
@@ -44,7 +44,7 @@ export const notificationController = {
     res.status(200).json({ success: true, data: { updated } });
   }),
 
-  // Owner-scoped in the service — you can only delete your own.
+  // Owner-scoped in the service, you can only delete your own.
   remove: catchAsync(async (req: Request, res: Response) => {
     await notificationService.remove(String(req.params.id), req.user!.sub);
     res.status(200).json({ success: true, data: null });

@@ -42,7 +42,7 @@ export interface UploadResult {
 const STORAGE_LIMIT_BYTES = 10 * 1024 * 1024;
 
 /**
- * Structural GLB check (magic bytes, version, chunk layout) — proves the bytes
+ * Structural GLB check (magic bytes, version, chunk layout), proves the bytes
  * really are a GLB without depending on the compressor, so renamed junk files
  * get a clean 400 instead of being stored.
  */
@@ -62,9 +62,9 @@ function assertValidGlb(buffer: Buffer): void {
 }
 
 /**
- * Draco-compresses a GLB (typically 60–80% smaller) so large models fit the
- * storage limit and load faster in the browser. Best-effort: models that are
- * already Draco-compressed crash gltf-pipeline — those pass through as-is.
+ * Draco-compresses a GLB (typically 60-80% smaller) so large models fit the
+ * storage limit and load faster in the browser. Best-effort, models that are
+ * already Draco-compressed crash gltf-pipeline, those pass through as-is.
  */
 async function compressModel(buffer: Buffer): Promise<Buffer> {
   assertValidGlb(buffer);
@@ -74,7 +74,7 @@ async function compressModel(buffer: Buffer): Promise<Buffer> {
       beforeMB: (buffer.length / 1048576).toFixed(1),
       afterMB: (glb.length / 1048576).toFixed(1),
     });
-    // Compression occasionally grows tiny files — keep whichever is smaller.
+    // Compression occasionally grows tiny files, keep whichever is smaller.
     return glb.length < buffer.length ? glb : buffer;
   } catch {
     logger.warn('glb compression skipped (likely already compressed)', {
@@ -95,13 +95,13 @@ function streamToCloudinary(
       (error, response) => {
         if (error || !response) {
           // Cloudinary rejections (size, format, plan limits) arrive as plain
-          // objects — wrap them in an AppError so the client gets a clean
+          // objects, wrap them in an AppError so the client gets a clean
           // message and status instead of a bare 500 "Unknown error".
           if (error) {
             const httpCode = typeof error.http_code === 'number' ? error.http_code : 502;
             const status = httpCode >= 400 && httpCode < 500 ? httpCode : 502;
             const message = /file size too large/i.test(error.message ?? '')
-              ? 'That file is too large — uploads are limited to 10 MB.'
+              ? 'That file is too large, uploads are limited to 10 MB.'
               : error.message || 'Media upload failed';
             return reject(new AppError(status, message));
           }
@@ -122,7 +122,7 @@ export const uploadService = {
       buffer = await compressModel(buffer);
       if (buffer.length > STORAGE_LIMIT_BYTES) {
         throw AppError.badRequest(
-          'Even after compression this model exceeds the 10 MB storage limit — simplify the model and try again',
+          'Even after compression this model exceeds the 10 MB storage limit, simplify the model and try again',
         );
       }
     }
@@ -135,8 +135,8 @@ export const uploadService = {
     return { url: result.secure_url, publicId: result.public_id };
   },
 
-  /** A user's profile photo — square, face-aware crop so any upload reads well
-   *  as a small circular avatar. Cloudinary does the resizing on the way in. */
+  /** A user's profile photo, square, face-aware crop so any upload reads well
+   * as a small circular avatar. Cloudinary does the resizing on the way in. */
   async uploadAvatar(buffer: Buffer): Promise<UploadResult> {
     ensureConfigured();
     const result = await streamToCloudinary(buffer, {
@@ -147,7 +147,7 @@ export const uploadService = {
     return { url: result.secure_url, publicId: result.public_id };
   },
 
-  /** Best-effort delete — used to clean up the old photo when one is replaced. */
+  /** Best-effort delete, used to clean up the old photo when one is replaced. */
   async destroy(publicId: string): Promise<void> {
     ensureConfigured();
     try {

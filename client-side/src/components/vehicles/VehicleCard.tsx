@@ -5,14 +5,14 @@ import Link from "next/link";
 import { ArrowRight, Users, Fuel, Gauge, Cog, Zap, Route } from "lucide-react";
 import { CATEGORY_LABELS, formatNpr, type Vehicle } from "@/lib/vehicleApi";
 
-/** A bare number like "180" reads as a raw value — give it a unit. */
+/** A bare number like "180" reads as a raw value, give it a unit. */
 function speedLabel(topSpeed?: string): string | null {
   if (!topSpeed) return null;
   const t = topSpeed.trim();
   return /^\d+$/.test(t) ? `${t} km/h` : t;
 }
 
-/** One vehicle in the grid — image stage on top, facts below. */
+/** One vehicle in the grid, image stage on top, facts below. */
 export default function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
   const { specs } = vehicle;
   const isEV = /electric|hybrid/i.test(specs.fuel);

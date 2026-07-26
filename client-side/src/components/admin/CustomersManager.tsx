@@ -144,7 +144,7 @@ export default function CustomersManager() {
                     Joined {joined(u.createdAt)}
                   </span>
 
-                  {/* Delete — admins can't be removed (server enforces it too) */}
+                  {/* Delete, admins can't be removed (server enforces it too) */}
                   {isAdmin ? null : confirmId === u._id ? (
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="text-[12px] text-fog">Delete?</span>

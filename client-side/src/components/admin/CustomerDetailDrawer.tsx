@@ -14,7 +14,7 @@ function initials(name: string): string {
 }
 
 function fullDate(iso?: string): string {
-  return iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+  return iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-";
 }
 
 function Field({ label, value }: { label: string; value: string }) {

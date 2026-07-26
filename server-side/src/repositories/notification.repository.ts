@@ -5,7 +5,7 @@ import {
   type NotificationType,
 } from '@/models/notification.model';
 
-// Data-access layer for notifications — the only place that touches the model.
+// Data-access layer for notifications, the only place that touches the model.
 
 export interface NewNotification {
   recipient: string;
@@ -45,7 +45,7 @@ export const notificationRepository = {
       .exec();
   },
 
-  /** Total notifications for a user — drives the page count. */
+  /** Total notifications for a user, drives the page count. */
   countByRecipient(userId: string): Promise<number> {
     return Notification.countDocuments({ recipient: userId }).exec();
   },
@@ -54,13 +54,13 @@ export const notificationRepository = {
     return Notification.countDocuments({ recipient: userId, read: false }).exec();
   },
 
-  /** Owner-scoped delete — returns null if it isn't theirs (or doesn't exist). */
+  /** Owner-scoped delete, returns null if it isn't theirs (or doesn't exist). */
   deleteOwned(id: string, userId: string): Promise<NotificationDocument | null> {
     return Notification.findOneAndDelete({ _id: id, recipient: userId }).exec();
   },
 
-  // Scoped to the owner — you can't read (or probe) someone else's notification.
-  // Idempotent: re-marking an already-read item still returns it.
+  // Scoped to the owner, you can't read (or probe) someone else's notification.
+  // Idempotent, re-marking an already-read item still returns it.
   markRead(id: string, userId: string): Promise<NotificationDocument | null> {
     return Notification.findOneAndUpdate(
       { _id: id, recipient: userId },

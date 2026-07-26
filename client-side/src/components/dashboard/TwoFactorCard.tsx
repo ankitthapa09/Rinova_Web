@@ -19,7 +19,7 @@ const ghostBtn =
 
 export default function TwoFactorCard() {
   const user = useDashboardUser();
-  // Local mirror of the enabled flag — the shell resolves the user once, so we
+  // Local mirror of the enabled flag, the shell resolves the user once, so we
   // track changes here and a reload re-syncs from /me.
   const [enabled, setEnabled] = useState(user.twoFactorEnabled);
   const [mode, setMode] = useState<Mode>("idle");
@@ -44,7 +44,7 @@ export default function TwoFactorCard() {
     }
   };
 
-  // ── Begin enabling: fetch the QR + secret ───────────────
+  // Begin enabling, fetch the QR + secret
   const beginSetup = async () => {
     if (busy) return;
     setBusy(true);
@@ -60,7 +60,7 @@ export default function TwoFactorCard() {
     }
   };
 
-  // ── Confirm the scanned code and flip 2FA on ────────────
+  // Confirm the scanned code and flip 2FA on
   const confirmSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
@@ -81,7 +81,7 @@ export default function TwoFactorCard() {
     }
   };
 
-  // ── Turn 2FA off (needs a fresh code) ───────────────────
+  // Turn 2FA off (needs a fresh code)
   const confirmDisable = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
@@ -107,7 +107,7 @@ export default function TwoFactorCard() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy — select and copy them manually.");
+      toast.error("Couldn't copy, select and copy them manually.");
     }
   };
 
@@ -123,7 +123,7 @@ export default function TwoFactorCard() {
     URL.revokeObjectURL(url);
   };
 
-  // ── Recovery codes (shown once, right after enabling) ───
+  // Recovery codes (shown once, right after enabling)
   if (mode === "codes") {
     return (
       <div data-dash-item className={cardClass}>
@@ -131,7 +131,7 @@ export default function TwoFactorCard() {
           Save your recovery codes
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-fog">
-          Each code works once if you lose your authenticator. Store them somewhere safe —
+          Each code works once if you lose your authenticator. Store them somewhere safe -
           this is the only time they&apos;re shown.
         </p>
 
@@ -159,7 +159,7 @@ export default function TwoFactorCard() {
     );
   }
 
-  // ── Setup: scan the QR, then confirm ────────────────────
+  // Setup, scan the QR, then confirm
   if (mode === "setup" && setup) {
     return (
       <form onSubmit={confirmSetup} data-dash-item className={cardClass}>
@@ -220,7 +220,7 @@ export default function TwoFactorCard() {
     );
   }
 
-  // ── Disable: confirm with a code ────────────────────────
+  // Disable, confirm with a code
   if (mode === "disable") {
     return (
       <form onSubmit={confirmDisable} data-dash-item className={cardClass}>
@@ -261,7 +261,7 @@ export default function TwoFactorCard() {
     );
   }
 
-  // ── Idle: current status + the entry action ─────────────
+  // Idle, current status + the entry action
   return (
     <div data-dash-item className={cardClass}>
       <div className="flex items-start justify-between gap-6">
@@ -277,7 +277,7 @@ export default function TwoFactorCard() {
             <h2 className="font-serif text-xl text-cream">Two-factor authentication</h2>
             <p className="mt-1 text-sm leading-relaxed text-fog">
               {enabled
-                ? "On — logins ask for a code from your authenticator app."
+                ? "On, logins ask for a code from your authenticator app."
                 : "Add a second step at login with an authenticator app."}
             </p>
           </div>

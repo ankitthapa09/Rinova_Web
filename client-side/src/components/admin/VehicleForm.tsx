@@ -50,8 +50,8 @@ function Field({
   );
 }
 
-/** A titled group of related fields — a light underlined header, no heavy box,
- *  so the panel reads as airy sections rather than stacked cards. */
+/** A titled group of related fields, a light underlined header, no heavy box,
+ * so the panel reads as airy sections rather than stacked cards. */
 function Section({
   title,
   icon: Icon,
@@ -104,7 +104,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
   const [featured, setFeatured] = useState(vehicle?.featured ?? false);
   const [isAvailable, setIsAvailable] = useState(vehicle?.isAvailable ?? true);
 
-  // Up to 4 photo slots — slot 0 is the cover.
+  // Up to 4 photo slots, slot 0 is the cover.
   const initialGallery = vehicle ? (vehicle.images?.length ? vehicle.images : [vehicle.imageUrl]) : [];
   const [photoSlots, setPhotoSlots] = useState<{ url: string | null; file: File | null }[]>(
     Array.from({ length: 4 }, (_, i) => ({ url: initialGallery[i] ?? null, file: null })),
@@ -113,7 +113,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
     setPhotoSlots((slots) => slots.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
   const [model, setModel] = useState<File | null>(null);
-  // Editing: marks the existing model for deletion on save (unless a new one is picked).
+  // Editing, marks the existing model for deletion on save (unless a new one is picked).
   const [removeModel, setRemoveModel] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -121,7 +121,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
   const busy = status !== "idle";
   const err = (field: string) => errors[field];
 
-  // ── Dynamic conditions ──────────────────────────────────
+  // Dynamic conditions
   const ev = isElectric(fuel);
   const combustion = hasEngine(fuel);
   const showSeats = category !== "bike";
@@ -130,8 +130,8 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
   const hasModel = Boolean(model) || keepsExistingModel;
   const fuelOptions = FUEL_OPTIONS.includes(fuel) ? FUEL_OPTIONS : [fuel, ...FUEL_OPTIONS];
 
-  /** Everything is required except the 3D model and the extra photos — only the
-   *  cover is mandatory. Conditional fields are required when their row shows. */
+  /** Everything is required except the 3D model and the extra photos, only the
+   * cover is mandatory. Conditional fields are required when their row shows. */
   const validate = (): Record<string, string> => {
     const v: Record<string, string> = {};
     if (!name.trim()) v.name = "Name is required.";
@@ -172,7 +172,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
       }
       const imageUrl = images[0];
 
-      // Conditional specs — cc for combustion, range/battery for electric.
+      // Conditional specs, cc for combustion, range/battery for electric.
       const specs: VehicleInput["specs"] = {
         fuel: fuel.trim(),
         ...(showSeats && seats ? { seats: Number(seats) } : {}),
@@ -196,7 +196,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
         description: description.trim(),
       };
 
-      // ── 3D model: upload a new one, keep the old, or remove it ──
+      // 3D model, upload a new one, keep the old, or remove it
       let modelUrl: string | null | undefined;
       let outLength: number | null | undefined;
       if (model) {
@@ -269,7 +269,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
         </div>
 
         <form onSubmit={onSubmit} className="flex-1 space-y-9 overflow-y-auto px-6 py-7">
-          {/* ── Basics ── */}
+          {/* Basics */}
           <Section title="Basics" icon={Box}>
             <Field label="Name" error={err("name")}>
               <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Honda CB750" />
@@ -311,7 +311,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
                 value={description}
                 maxLength={DESCRIPTION_MAX}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="A classic inline-four with presence — engine, ride quality, standout features…"
+                placeholder="A classic inline-four with presence, engine, ride quality, standout features…"
               />
               {err("description") ? (
                 <span className="mt-1 block text-[12px] text-red-400">{err("description")}</span>
@@ -323,7 +323,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
             </div>
           </Section>
 
-          {/* ── Specifications (dynamic) ── */}
+          {/* Specifications (dynamic) */}
           <Section title="Specifications" icon={Zap}>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Fuel" error={err("specs.fuel")}>
@@ -337,7 +337,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
               </Field>
               <Field label="Transmission" error={err("specs.transmission")}>
                 <select className={inputCls} value={transmission} onChange={(e) => setTransmission(e.target.value)}>
-                  <option value="">—</option>
+                  <option value="">-</option>
                   <option value="Manual">Manual</option>
                   <option value="Automatic">Automatic</option>
                 </select>
@@ -375,10 +375,10 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
             ) : null}
           </Section>
 
-          {/* ── Media ── */}
+          {/* Media */}
           <Section title="Media" icon={Upload}>
             <div>
-              <span className={labelCls}>Photos — up to 4, first is the cover</span>
+              <span className={labelCls}>Photos, up to 4, first is the cover</span>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {photoSlots.map((slot, i) => (
                   <PhotoSlot
@@ -414,7 +414,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
 
             {hasModel ? (
               <Field
-                label="Model length (world units, 0.5–20)"
+                label="Model length (world units, 0.5-20)"
                 error={err("modelLength")}
                 hint="Controls the model's size on the detail page."
               >
@@ -423,7 +423,7 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
             ) : null}
           </Section>
 
-          {/* ── Visibility ── */}
+          {/* Visibility */}
           <Section title="Visibility" icon={Eye}>
             <div className="grid grid-cols-2 gap-3">
               <Toggle
@@ -468,8 +468,8 @@ export default function VehicleForm({ vehicle, onClose, onSaved }: Props) {
   );
 }
 
-/** The 3D model uploader: pick a new .glb, or (when editing) keep / remove the
- *  existing one. */
+/** The 3D model uploader, pick a new .glb, or (when editing) keep / remove the
+ * existing one. */
 function ModelField({
   file,
   existing,
@@ -489,7 +489,7 @@ function ModelField({
 
   return (
     <div>
-      <span className={labelCls}>3D model (.glb) — optional</span>
+      <span className={labelCls}>3D model (.glb), optional</span>
 
       {/* A newly-picked file wins over anything else. */}
       {file ? (

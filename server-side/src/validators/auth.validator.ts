@@ -1,15 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Request-body contracts for the auth endpoints. These run in the `validate`
- * middleware before a request reaches the controller, so the layers below
- * only ever see well-formed, typed input. Rules mirror the client-side form
- * checks — the server is the one that actually enforces them.
- */
-
-/** The one password rule, used everywhere a password is set. Length bounds
- *  plus one of each character class; the 72 cap exists because bcrypt only
- *  hashes the first 72 bytes and would silently truncate longer input. */
 export const passwordRule = z
   .string({ error: 'Password is required' })
   .min(8, 'Password must be at least 8 characters')
@@ -39,8 +29,8 @@ export const registerSchema = z.object({
   captchaToken: z.string({ error: 'Captcha verification is required' }).min(1).optional(),
 });
 
-/** Self-service profile edit — the contact fields only, reusing register's rules.
- *  Email and role are intentionally out of reach here. */
+/** Self-service profile edit, the contact fields only, reusing register's rules.
+ * Email and role are intentionally out of reach here. */
 export const updateProfileSchema = registerSchema.pick({ name: true, phone: true, address: true });
 
 export const loginSchema = z.object({
@@ -80,13 +70,13 @@ const codeField = z
   .min(6, 'Enter your 6-digit code')
   .max(20, 'That code is too long');
 
-/** Second login step — the challenge proves the password already passed. */
+/** Second login step, the challenge proves the password already passed. */
 export const twoFactorLoginSchema = z.object({
   challengeToken: z.string({ error: 'Verification session missing' }).min(1),
   code: codeField,
 });
 
-/** Confirming setup, or disabling — both need a live code. */
+/** Confirming setup, or disabling, both need a live code. */
 export const twoFactorCodeSchema = z.object({
   code: codeField,
 });

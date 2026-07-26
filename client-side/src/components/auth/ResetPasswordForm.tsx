@@ -50,7 +50,7 @@ export default function ResetPasswordForm({ token }: { token: string }) {
     } catch (err) {
       setStatus("idle");
       if (err instanceof ApiError) {
-        // e.g. 400 — link expired or already used
+        // e.g. 400, link expired or already used
         const fieldMsg = Object.values(err.fieldErrors)[0];
         toast.error(fieldMsg ?? err.message);
       } else {

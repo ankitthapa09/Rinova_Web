@@ -4,7 +4,7 @@ import { requireAuth } from '@/middlewares/auth.middleware';
 
 const router = Router();
 
-// Notifications are always personal — a live session is required for all of them.
+// Notifications are always personal, a live session is required for all of them.
 router.use(requireAuth);
 
 router.get('/', notificationController.list);

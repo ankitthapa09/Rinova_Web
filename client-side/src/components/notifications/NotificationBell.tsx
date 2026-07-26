@@ -11,7 +11,7 @@ const POLL_MS = 30_000;
 const DROPDOWN_LIMIT = 8;
 
 interface NotificationBellProps {
-  /** Where "View all" goes — the full page for this area (dashboard vs admin). */
+  /** Where "View all" goes, the full page for this area (dashboard vs admin). */
   viewAllHref?: string;
 }
 
@@ -30,7 +30,7 @@ export default function NotificationBell({ viewAllHref = "/dashboard/notificatio
         const n = await notificationApi.unreadCount();
         if (!cancelled) setUnread(n);
       } catch {
-        /* not signed in yet, or a transient error — ignore */
+        /* not signed in yet, or a transient error, ignore */
       }
     };
     tick();

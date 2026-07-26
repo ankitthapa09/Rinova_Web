@@ -23,7 +23,7 @@ export default function NotificationsView({ allowDelete = false }: { allowDelete
     if (!silent) setLoading(true);
     try {
       const data = await notificationApi.list({ limit: PAGE_SIZE, page: p });
-      // Deleting the last item on a page can leave it empty — step back one.
+      // Deleting the last item on a page can leave it empty, step back one.
       if (data.notifications.length === 0 && p > 1) {
         setPage(p - 1);
         return;

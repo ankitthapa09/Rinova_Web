@@ -4,10 +4,10 @@ import { useEffect, useRef } from "react";
 import Lenis from "lenis";
 import { gsap, ScrollTrigger, MOTION_OK } from "./gsap";
 
-/**
- * Lenis smooth scrolling synced with ScrollTrigger, plus the 2px
- * accent scroll-progress line fixed to the top of the viewport.
- */
+// the navbar reaches the lenis instance through this global
+type LenisWindow = Window & { __lenis?: Lenis };
+
+// lenis smooth scroll synced with ScrollTrigger, plus the accent progress bar up top
 export default function SmoothScroll() {
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -16,21 +16,36 @@ export default function SmoothScroll() {
 
     const lenis = new Lenis({ lerp: 0.08 });
     lenis.on("scroll", ScrollTrigger.update);
+    // expose the instance so the navbar can scroll through lenis
+    (window as LenisWindow).__lenis = lenis;
 
     const raf = (time: number) => lenis.raf(time * 1000);
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
 
-    // Route same-page anchor clicks through Lenis
+    // in-content #hash links scroll through lenis. the navbar's /#section links
+    // are handled in the navbar, so they don't match here (avoids a double scroll)
     const onClick = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
       if (!anchor) return;
       const target = document.querySelector(anchor.hash || "#");
       if (!target) return;
       e.preventDefault();
-      lenis.scrollTo(target as HTMLElement, { offset: -72, duration: 1.4 });
+      window.history.replaceState(null, "", anchor.hash);
+      lenis.scrollTo(target as HTMLElement, { offset: -80, duration: 1.4 });
     };
     document.addEventListener("click", onClick);
+
+    // arrived with a hash from another page, scroll to it once gsap has laid out
+    if (window.location.hash) {
+      const target = document.querySelector(window.location.hash);
+      if (target) {
+        window.setTimeout(() => {
+          ScrollTrigger.refresh();
+          lenis.scrollTo(target as HTMLElement, { offset: -80, duration: 1.2 });
+        }, 500);
+      }
+    }
 
     // Scroll progress bar
     let progressTween: gsap.core.Tween | undefined;
@@ -53,6 +68,7 @@ export default function SmoothScroll() {
       progressTween?.kill();
       gsap.ticker.remove(raf);
       lenis.destroy();
+      delete (window as LenisWindow).__lenis;
     };
   }, []);
 

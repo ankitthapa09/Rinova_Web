@@ -5,8 +5,7 @@ import { uploadSingle } from '@/middlewares/upload';
 
 const router = Router();
 
-// Admin-only media upload. :kind is 'image' or 'model'. The chain is:
-// authenticate → require admin → parse+validate the file → hand to Cloudinary.
+// Admin-only media upload. :kind is 'image' or 'model'. The chain is// authenticate to require admin to parse+validate the file to hand to Cloudinary.
 router.post(
   '/:kind',
   requireAuth,

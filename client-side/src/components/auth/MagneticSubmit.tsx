@@ -16,7 +16,7 @@ interface MagneticSubmitProps {
 }
 
 /**
- * The MagneticButton pattern as a real <button type="submit">: follows the
+ * The MagneticButton pattern as a real <button type="submit">, follows the
  * cursor, swaps its label upward on hover, and morphs into a spinner then
  * a success check while the form resolves. Can also show a locked state.
  */

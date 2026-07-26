@@ -18,7 +18,7 @@ const VEHICLE_TYPES: { id: VehicleType; label: string }[] = [
 ];
 
 interface WashPackage {
-  /** Matches the server's catalogue id — carried into the booking form */
+  /** Matches the server's catalogue id, carried into the booking form */
   id: "basic" | "deep" | "detail";
   name: string;
   duration: string;
@@ -31,7 +31,7 @@ const PACKAGES: WashPackage[] = [
   {
     id: "basic",
     name: "Basic Wash",
-    duration: "20–30 min",
+    duration: "20-30 min",
     prices: { bike: 150, car: 300, suv: 400, van: 500, bus: 900 },
     features: [
       "Exterior foam wash",
@@ -43,7 +43,7 @@ const PACKAGES: WashPackage[] = [
   {
     id: "deep",
     name: "Deep Clean",
-    duration: "60–90 min",
+    duration: "60-90 min",
     prices: { bike: 400, car: 800, suv: 1000, van: 1200, bus: 2000 },
     features: [
       "Everything in Basic",
@@ -57,7 +57,7 @@ const PACKAGES: WashPackage[] = [
   {
     id: "detail",
     name: "Full Detail",
-    duration: "3–4 hrs",
+    duration: "3-4 hrs",
     prices: { bike: 1200, car: 2500, suv: 3000, van: 3500, bus: 6000 },
     features: [
       "Everything in Deep Clean",
@@ -69,8 +69,8 @@ const PACKAGES: WashPackage[] = [
   },
 ];
 
-/** One odometer column: the digits 0–9 stacked; changing the value rolls the
- *  stack to the new digit like a mechanical counter. */
+/** One odometer column, the digits 0-9 stacked; changing the value rolls the
+ * stack to the new digit like a mechanical counter. */
 function Digit({ digit, order }: { digit: number; order: number }) {
   const colRef = useRef<HTMLSpanElement>(null);
   const first = useRef(true);
@@ -90,7 +90,7 @@ function Digit({ digit, order }: { digit: number; order: number }) {
     gsap.to(col, {
       yPercent: -digit * 10,
       duration: 0.85,
-      delay: order * 0.06, // columns settle left → right
+      delay: order * 0.06, // columns settle left to right
       ease: EASE,
       overwrite: "auto",
     });
@@ -151,7 +151,7 @@ export default function WashPricing() {
     }
   }, [vehicle]);
 
-  // Entrance: cards rise out of the floor with perspective, once.
+  // Entrance, cards rise out of the floor with perspective, once.
   useLayoutEffect(() => {
     const cards = cardsRef.current;
     if (!cards) return;
@@ -218,7 +218,7 @@ export default function WashPricing() {
               ]}
             />
             <p data-fade className="mt-6 max-w-md text-sm leading-relaxed text-fog md:text-base">
-              Wash pricing scales with vehicle size — you never overpay.
+              Wash pricing scales with vehicle size, you never overpay.
             </p>
           </div>
 
@@ -253,7 +253,7 @@ export default function WashPricing() {
           </div>
         </div>
 
-        {/* Package cards — the popular one is the molten centerpiece */}
+        {/* Package cards, the popular one is the molten centerpiece */}
         <div
           ref={cardsRef}
           className="mt-14 grid grid-cols-1 items-stretch gap-6 md:grid-cols-3"
