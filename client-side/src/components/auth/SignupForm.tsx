@@ -10,6 +10,7 @@ import CaptchaWidget from "./CaptchaWidget";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
 import PasswordStrength, { passwordMeetsRules } from "./PasswordStrength";
+import SocialAuth from "./SocialAuth";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^9[78]\d{8}$/;
@@ -117,6 +118,8 @@ export default function SignupForm({ siteKey }: SignupFormProps) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+      <SocialAuth label="Sign up with Google" />
+
       <FloatingInput
         id="name"
         label="Full name"

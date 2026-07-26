@@ -10,9 +10,30 @@ import {
 
 export type CreateUserData = Pick<IUser, 'name' | 'email' | 'phone' | 'address' | 'password'>;
 
+/** A Google sign-up: no password or contact details yet, email already proven. */
+export type CreateOAuthUserData = { name: string; email: string; googleId: string };
+
 export const userRepository = {
   create(data: CreateUserData): Promise<UserDocument> {
     return User.create(data);
+  },
+
+  /** Creates a Google-backed account. Email is trusted (Google verified it),
+   *  so it's marked verified and no password is set. */
+  createOAuthUser(data: CreateOAuthUserData): Promise<UserDocument> {
+    return User.create({
+      name: data.name,
+      email: data.email,
+      googleId: data.googleId,
+      authProvider: 'google',
+      isEmailVerified: true,
+    });
+  },
+
+  /** Links a Google id to an existing account and trusts its now-verified email.
+   *  Safe because Google has proven ownership of an address the account owns. */
+  async linkGoogle(id: string, googleId: string): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { googleId, isEmailVerified: true } }).exec();
   },
 
   findByEmail(email: string): Promise<UserDocument | null> {

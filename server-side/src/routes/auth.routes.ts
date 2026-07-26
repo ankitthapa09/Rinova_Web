@@ -29,6 +29,12 @@ router.post(
   authController.twoFactorLogin,
 );
 
+// Google OAuth — browser redirects (GET), not JSON APIs. Step 1 sends the user
+// to Google; step 2 is the callback Google redirects back to. A signed state
+// cookie guards the handshake against CSRF (see the controller).
+router.get('/oauth/google', authController.googleRedirect);
+router.get('/oauth/google/callback', authController.googleCallback);
+
 // 2FA management — all require a live session.
 router.post('/2fa/setup', requireAuth, authController.startTwoFactor);
 router.post(

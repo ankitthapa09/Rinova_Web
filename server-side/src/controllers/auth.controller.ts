@@ -1,11 +1,26 @@
+import crypto from 'node:crypto';
 import type { Request, Response, CookieOptions } from 'express';
 import { authService } from '@/services/auth.service';
+import { oauthService } from '@/services/oauth.service';
 import { userRepository } from '@/repositories/user.repository';
 import { catchAsync } from '@/utils/catchAsync';
 import { AppError } from '@/utils/AppError';
+import { logger } from '@/config/logger';
 import { env, isProd } from '@/config/env';
 
 const REFRESH_COOKIE = 'refreshToken';
+const OAUTH_STATE_COOKIE = 'oauthState';
+
+// The state cookie must survive the top-level redirect *back* from Google, so it
+// is SameSite=lax — 'strict' would be dropped on that cross-site navigation and
+// every callback would fail the CSRF check. Short-lived and httpOnly regardless.
+const stateCookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: 'lax',
+  path: '/api/v1/auth',
+  maxAge: 10 * 60 * 1000,
+};
 
 /** '15m' | '12h' | '7d' - milliseconds */
 function durationToMs(value: string): number {
@@ -71,6 +86,55 @@ export const authController = {
       success: true,
       data: { user, accessToken: tokens.accessToken },
     });
+  }),
+
+  // ── Google OAuth ──────────────────────────────────────────
+  // Step 1: plant a random `state` in a cookie and bounce the browser to Google.
+  googleRedirect: catchAsync(async (_req: Request, res: Response) => {
+    if (!oauthService.isConfigured()) throw AppError.notFound('Google sign-in is not available');
+
+    const state = crypto.randomBytes(16).toString('hex');
+    res.cookie(OAUTH_STATE_COOKIE, state, stateCookieOptions);
+    res.redirect(oauthService.buildAuthUrl(state));
+  }),
+
+  // Step 2: Google redirects back here. Verify state (CSRF), exchange the code,
+  // resolve the account, and hand the session to the client via a redirect.
+  // Errors redirect to the client with an ?error code rather than showing JSON.
+  googleCallback: catchAsync(async (req: Request, res: Response) => {
+    const landing = `${env.CLIENT_URL}/oauth/callback`;
+    const fail = (reason: string) => res.redirect(`${landing}?error=${reason}`);
+
+    // User cancelled at Google's consent screen, or Google returned an error.
+    if (req.query.error) return fail('denied');
+
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    const state = typeof req.query.state === 'string' ? req.query.state : '';
+    const cookieState = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
+    // One-shot: clear the state cookie whether or not it checks out.
+    res.clearCookie(OAUTH_STATE_COOKIE, { ...stateCookieOptions, maxAge: undefined });
+
+    // The state we planted must come back unchanged — otherwise it's forged.
+    if (!code || !state || !cookieState || state !== cookieState) return fail('state');
+
+    let outcome;
+    try {
+      const profile = await oauthService.fetchProfile(code);
+      outcome = await authService.loginWithGoogle(profile, { userAgent: req.get('user-agent') });
+    } catch (err) {
+      logger.warn('google callback failed', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+      return fail('failed');
+    }
+
+    // Account has 2FA on — pass the short-lived challenge to the client to finish.
+    if ('twoFactorRequired' in outcome) {
+      return res.redirect(`${landing}?twofa=${outcome.challengeToken}`);
+    }
+
+    res.cookie(REFRESH_COOKIE, outcome.tokens.refreshToken, refreshCookieOptions);
+    res.redirect(`${landing}?ok=1`);
   }),
 
   refresh: catchAsync(async (req: Request, res: Response) => {

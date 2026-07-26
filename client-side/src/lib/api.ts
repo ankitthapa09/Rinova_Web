@@ -9,6 +9,8 @@ export interface ApiUser {
   role: "user" | "admin";
   isEmailVerified: boolean;
   twoFactorEnabled: boolean;
+  /** How the account signs in — "google" accounts may have no password. */
+  authProvider?: "local" | "google";
   profileImageUrl?: string;
   createdAt: string;
   updatedAt: string;
@@ -43,6 +45,15 @@ let refreshInFlight: Promise<void> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
+}
+
+/**
+ * Absolute URL that kicks off Google sign-in. This is a full-page navigation
+ * (`window.location.href = …`), not a fetch — the server redirects the browser
+ * to Google's consent screen and later back to /oauth/callback.
+ */
+export function googleAuthUrl(): string {
+  return `${BASE_URL}/auth/oauth/google`;
 }
 
 // Non-sensitive flag so anonymous visitors don't fire doomed refresh calls

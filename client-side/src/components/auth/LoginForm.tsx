@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/toast";
 import CaptchaWidget from "./CaptchaWidget";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
+import SocialAuth from "./SocialAuth";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -201,6 +202,8 @@ export default function LoginForm({ siteKey }: LoginFormProps) {
   // ── First step: credentials ─────────────────────────────
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+      <SocialAuth label="Continue with Google" />
+
       <FloatingInput
         id="email"
         label="Email"

@@ -48,10 +48,17 @@ const envSchema = z.object({
   // Captcha — Turnstile is used for the public auth forms when configured.
   TURNSTILE_SECRET_KEY: z.string().optional(),
 
+  // OAuth (Google) — optional; the "Continue with Google" button is hidden and
+  // the routes 404 when these are unset, so the app runs fine without them.
+  // The client secret lives only here on the server, never in the browser.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  /** Must exactly match the redirect URI registered in Google Cloud Console. */
+  GOOGLE_CALLBACK_URL: z
+    .url()
+    .default('http://localhost:4000/api/v1/auth/oauth/google/callback'),
+
   // Rate limiting
-  /** Hops of reverse proxy in front of the app (0 = none). Only set this when
-   *  a proxy really exists — trusting X-Forwarded-For without one lets clients
-   *  spoof their IP and dodge per-IP rate limits. */
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900_000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(100),

@@ -37,11 +37,18 @@ export interface RefreshSession {
 export interface IUser {
   name: string;
   email: string;
-  phone: string;
-  address: string;
+  /** Optional: OAuth (Google) accounts sign up without contact details and
+   *  fill them in later from their profile. */
+  phone?: string;
+  address?: string;
   profileImageUrl?: string;
   profileImagePublicId?: string;
-  password: string;
+  /** Optional: a Google-only account has no password until it sets one. */
+  password?: string;
+  /** How the account was created / can sign in. */
+  authProvider: 'local' | 'google';
+  /** Google's stable subject id — set once a Google account is linked. */
+  googleId?: string;
   role: UserRole;
   isEmailVerified: boolean;
   lastLoginAt?: Date;
@@ -104,7 +111,8 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     phone: {
       type: String,
-      required: [true, 'Contact number is required'],
+      // Optional so Google sign-ups (no phone yet) can be created; local signups
+      // are still forced to provide it by the register validator.
       trim: true,
       // Nepali mobile numbers: 10 digits starting 97/98 (basic shape check;
       // the request validator enforces the stricter rule with clear messages)
@@ -112,7 +120,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     address: {
       type: String,
-      required: [true, 'Address is required'],
+      // Optional for the same reason as phone above.
       trim: true,
       minlength: 3,
       maxlength: 120,
@@ -126,9 +134,21 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      // Optional at the schema level so Google accounts (no password) are valid;
+      // local signups always set one via the register flow.
       minlength: 8,
       select: false,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    googleId: {
+      type: String,
+      select: false,
+      index: true,
+      sparse: true, // only indexes docs that have one — locals stay unindexed
     },
     role: {
       type: String,
@@ -231,6 +251,7 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
         delete ret.twoFactorSecret;
         delete ret.twoFactorRecoveryCodes;
         delete ret.twoFactorLastUsedStep;
+        delete ret.googleId;
         delete ret.__v;
         return ret;
       },
@@ -241,19 +262,23 @@ const userSchema = new Schema<IUser, UserModel, IUserMethods>(
 // Hash the password whenever it's set or changed, so no write path can accidentally store it raw.
 
 userSchema.pre('save', async function hashPassword() {
-  if (!this.isModified('password')) return;
+  if (!this.isModified('password') || !this.password) return;
   this.password = await bcrypt.hash(this.password, env.BCRYPT_SALT_ROUNDS);
 
   // Backdated a second so a token signed just before this save still counts as "before".
   if (!this.isNew) this.passwordChangedAt = new Date(Date.now() - 1000);
 });
 
-userSchema.method('comparePassword', function comparePassword(candidate: string) {
+userSchema.method('comparePassword', async function comparePassword(candidate: string) {
+  // A Google-only account has no password — nothing can match it.
+  if (!this.password) return false;
   return bcrypt.compare(candidate, this.password);
 });
 
 userSchema.method('isPasswordReused', async function isPasswordReused(candidate: string) {
-  const hashes = [this.password, ...(this.passwordHistory ?? [])].filter(Boolean);
+  const hashes = [this.password, ...(this.passwordHistory ?? [])].filter(
+    (hash): hash is string => Boolean(hash),
+  );
   for (const hash of hashes) {
     if (await bcrypt.compare(candidate, hash)) return true;
   }

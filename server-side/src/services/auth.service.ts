@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { userRepository } from '@/repositories/user.repository';
 import { tokenService, type TokenPair } from '@/services/token.service';
 import { totpService } from '@/services/totp.service';
+import type { GoogleProfile } from '@/services/oauth.service';
 import { emailService } from '@/services/email.service';
 import { uploadService } from '@/services/upload.service';
 import { AppError } from '@/utils/AppError';
@@ -178,6 +179,40 @@ export const authService = {
     }
 
     await userRepository.recordLogin(user.id);
+    return { user, tokens: await issueSession(user, context) };
+  },
+
+  /** Google sign-in — resolves (or creates) the account behind a verified
+   *  Google profile, then returns a session, exactly like a password login.
+   *  2FA still applies: Google proves the email, not the second factor. */
+  async loginWithGoogle(profile: GoogleProfile, context?: AuthContext): Promise<LoginOutcome> {
+    // Never trust an unverified Google email — it could be an address the Google
+    // account doesn't actually own, which would let it hijack a local account.
+    if (!profile.emailVerified) {
+      throw AppError.unauthorized('Your Google email is not verified');
+    }
+
+    let user = await userRepository.findByEmail(profile.email);
+    if (user) {
+      // Existing account with this email — link Google to it (idempotent).
+      await userRepository.linkGoogle(user.id, profile.googleId);
+    } else {
+      user = await userRepository.createOAuthUser({
+        name: profile.name,
+        email: profile.email,
+        googleId: profile.googleId,
+      });
+      logger.info('user registered via google', { userId: user.id });
+    }
+
+    // If the account has 2FA on, hand back a challenge instead of a session.
+    if (user.twoFactorEnabled) {
+      logger.info('google login awaiting 2FA', { userId: user.id });
+      return { twoFactorRequired: true, challengeToken: tokenService.sign2faChallenge(user.id) };
+    }
+
+    await userRepository.recordLogin(user.id);
+    logger.info('google login', { userId: user.id });
     return { user, tokens: await issueSession(user, context) };
   },
 
@@ -433,10 +468,9 @@ export const authService = {
       throw AppError.badRequest('New password must differ from your recent passwords');
     }
 
-    user.passwordHistory = [user.password, ...(user.passwordHistory ?? [])].slice(
-      0,
-      PASSWORD_HISTORY_LIMIT,
-    );
+    user.passwordHistory = [user.password, ...(user.passwordHistory ?? [])]
+      .filter((hash): hash is string => Boolean(hash))
+      .slice(0, PASSWORD_HISTORY_LIMIT);
     user.password = input.newPassword;
     await user.save();
 
@@ -456,10 +490,9 @@ export const authService = {
       throw AppError.badRequest('New password must differ from your recent passwords');
     }
 
-    user.passwordHistory = [user.password, ...(user.passwordHistory ?? [])].slice(
-      0,
-      PASSWORD_HISTORY_LIMIT,
-    );
+    user.passwordHistory = [user.password, ...(user.passwordHistory ?? [])]
+      .filter((hash): hash is string => Boolean(hash))
+      .slice(0, PASSWORD_HISTORY_LIMIT);
     user.password = password;
     user.clearPasswordReset();
     await user.save();
