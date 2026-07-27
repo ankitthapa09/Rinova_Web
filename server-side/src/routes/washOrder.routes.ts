@@ -10,7 +10,7 @@ import {
 
 const router = Router();
 
-// Public — the landing page prices washes and shows free slots before anyone logs in.
+// Public, the landing page prices washes and shows free slots before anyone logs in.
 router.get('/packages', washOrderController.catalogue);
 router.get(
   '/availability',

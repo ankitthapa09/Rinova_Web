@@ -13,10 +13,10 @@ import MaskText from "./MaskText";
 const FleetScene = dynamic(() => import("./three/FleetScene"), { ssr: false });
 
 /**
- * The fleet showcase: one vehicle category on stage at a time.
- * Desktop — the section pins and vertical scroll slides the 3D vehicles
+ * The fleet showcase, one vehicle category on stage at a time.
+ * Desktop, the section pins and vertical scroll slides the 3D vehicles
  * horizontally through the stage, one category per viewport of scroll.
- * Mobile — arrows drive the same scene.
+ * Mobile, arrows drive the same scene.
  */
 export default function Fleet() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -27,10 +27,9 @@ export default function Fleet() {
   const gl = useWebGL();
   useReveal(sectionRef);
 
-  // The stage holds five vehicles — parsing and uploading them costs a few
+  // The stage holds five vehicles, parsing and uploading them costs a few
   // hundred ms. Mounting it with the page makes the hero pay that bill while
-  // the visitor is still looking at the hero. Mount a screen early instead:
-  // far enough ahead that it's warm on arrival, late enough to leave the hero alone.
+  // the visitor is still looking at the hero. Mount a screen early instead  // far enough ahead that it's warm on arrival, late enough to leave the hero alone.
   const [stageReady, setStageReady] = useState(false);
   useEffect(() => {
     const section = sectionRef.current;
@@ -48,7 +47,7 @@ export default function Fleet() {
     return () => io.disconnect();
   }, [stageReady]);
 
-  // Desktop: pin + scrub category progress
+  // Desktop, pin + scrub category progress
   useLayoutEffect(() => {
     const section = sectionRef.current;
     if (!section) return;

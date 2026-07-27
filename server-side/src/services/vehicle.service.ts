@@ -4,7 +4,7 @@ import { logger } from '@/config/logger';
 import type { VehicleDocument, VehicleCategory } from '@/models/vehicle.model';
 import type { CreateVehicleInput, UpdateVehicleInput } from '@/validators/vehicle.validator';
 
-/** "Honda CB750!" → "honda-cb750" */
+/** "Honda CB750!" to "honda-cb750" */
 function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -24,7 +24,7 @@ async function uniqueSlug(name: string): Promise<string> {
 }
 
 export const vehicleService = {
-  /** Public catalog — available vehicles, optionally one category. */
+  /** Public catalog, available vehicles, optionally one category. */
   list(category?: VehicleCategory): Promise<VehicleDocument[]> {
     return vehicleRepository.findAvailable(category);
   },
@@ -35,7 +35,7 @@ export const vehicleService = {
     return vehicle;
   },
 
-  // ── Admin ────────────────────────────────────────────────
+  // Admin
 
   listAll(): Promise<VehicleDocument[]> {
     return vehicleRepository.findAll();
@@ -48,14 +48,14 @@ export const vehicleService = {
     return vehicle;
   },
 
-  /** Slug stays fixed after creation — renames must not break shared URLs. */
+  /** Slug stays fixed after creation, renames must not break shared URLs. */
   async update(id: string, input: UpdateVehicleInput): Promise<VehicleDocument> {
     const { modelUrl, modelLength, ...rest } = input;
     const data: UpdateVehicleData = { ...rest };
     const unset: string[] = [];
 
     if (modelUrl === null) {
-      // Admin removed the 3D showcase — drop the model and its length together.
+      // Admin removed the 3D showcase, drop the model and its length together.
       unset.push('modelUrl', 'modelLength');
     } else {
       if (modelUrl !== undefined) data.modelUrl = modelUrl;

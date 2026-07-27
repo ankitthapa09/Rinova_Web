@@ -9,9 +9,11 @@ import {
   CalendarRange,
   Droplets,
   Users,
+  Bell,
   LogOut,
 } from "lucide-react";
 import Cursor from "@/components/landing/Cursor";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { authApi, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
@@ -41,13 +43,14 @@ interface NavItem {
   soon?: boolean;
 }
 
-// The admin's own navigation — the operator's jobs, not a customer's. Sections
+// The admin's own navigation, the operator's jobs, not a customer's. Sections
 // whose backend isn't built yet are flagged `soon` and light up as we add each.
 const NAV: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Vehicles", href: "/admin/vehicles", icon: CarFront },
   { label: "Rental Bookings", href: "/admin/rentals", icon: CalendarRange },
   { label: "Wash Orders", href: "/admin/washes", icon: Droplets },
+  { label: "Notifications", href: "/admin/notifications", icon: Bell },
   { label: "Customers", href: "/admin/customers", icon: Users },
 ];
 
@@ -138,15 +141,18 @@ export default function AdminShell({ children }: { children: ReactNode }) {
       <div className="relative flex min-h-[100svh]">
         <Cursor />
 
-        {/* ── Sidebar ─────────────────────────────────────── */}
+        {/* Sidebar */}
         <aside className="sticky top-0 hidden h-[100svh] w-[250px] shrink-0 flex-col border-r border-line px-6 py-8 lg:flex">
-          <div className="flex items-center gap-2.5">
-            <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
-              RINOVA
-            </Link>
-            <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-accent">
-              Admin
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
+                RINOVA
+              </Link>
+              <span className="rounded-full bg-accent/12 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.14em] text-accent">
+                Admin
+              </span>
+            </div>
+            <NotificationBell viewAllHref="/admin/notifications" />
           </div>
 
           <nav className="mt-12 flex flex-col gap-1">
@@ -173,7 +179,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        {/* ── Main ────────────────────────────────────────── */}
+        {/* Main */}
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div aria-hidden className="glow-orb absolute -right-[20%] -top-[30%] h-[50vw] w-[50vw]" />
 
@@ -188,16 +194,19 @@ export default function AdminShell({ children }: { children: ReactNode }) {
                   Admin
                 </span>
               </div>
-              <button
-                onClick={onLogout}
-                aria-label="Sign out"
-                className="rounded-full p-2 text-fog transition-colors hover:text-accent"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <NotificationBell viewAllHref="/admin/notifications" />
+                <button
+                  onClick={onLogout}
+                  aria-label="Sign out"
+                  className="rounded-full p-2 text-fog transition-colors hover:text-accent"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
-            {/* Mobile nav — horizontal scroll of the same sections */}
+            {/* Mobile nav, horizontal scroll of the same sections */}
             <nav className="mb-8 flex gap-1 overflow-x-auto lg:hidden">
               <NavLinks pathname={pathname} />
             </nav>

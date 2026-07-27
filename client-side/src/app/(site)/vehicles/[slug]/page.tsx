@@ -6,7 +6,7 @@ interface Props {
 }
 
 /**
- * Dynamic route: one file serves every vehicle at /vehicles/<slug>.
+ * Dynamic route, one file serves every vehicle at /vehicles/<slug>.
  * Data loads client-side through vehicleApi, so admin added vehicles appear without a rebuild
  */
 export function generateMetadata({ params }: Props): Metadata {
@@ -15,7 +15,7 @@ export function generateMetadata({ params }: Props): Metadata {
     .map((w) => w[0]?.toUpperCase() + w.slice(1))
     .join(" ");
   return {
-    title: `${name} — Rinova`,
+    title: `${name} | Rinova`,
     description: `Rent the ${name} in Kathmandu with Rinova.`,
   };
 }

@@ -10,7 +10,7 @@ async function bootstrap(): Promise<void> {
     logger.info(`Server running on port ${env.PORT} [${env.NODE_ENV}]`);
   });
 
-  // Finish in-flight requests, then close the DB — no dropped connections
+  // Finish in-flight requests, then close the DB, no dropped connections
   const shutdown = (signal: string) => {
     logger.info(`${signal} received, shutting down`);
     server.close(() => {

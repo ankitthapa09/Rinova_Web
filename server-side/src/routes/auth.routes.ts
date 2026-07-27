@@ -2,17 +2,87 @@ import { Router } from 'express';
 import { authController } from '@/controllers/auth.controller';
 import { validate } from '@/middlewares/validate';
 import { requireAuth } from '@/middlewares/auth.middleware';
-import { authLimiter } from '@/middlewares/rateLimiter';
-import { registerSchema, loginSchema } from '@/validators/auth.validator';
+import { uploadSingle } from '@/middlewares/upload';
+import { authLimiter, loginLimiter, resetLimiter } from '@/middlewares/rateLimiter';
+import {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  changePasswordSchema,
+  verifyEmailSchema,
+  twoFactorLoginSchema,
+  twoFactorCodeSchema,
+  updateProfileSchema,
+} from '@/validators/auth.validator';
 
 const router = Router();
 
 // Credential endpoints get the strict limiter (failed attempts only)
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
-router.post('/login', authLimiter, validate(loginSchema), authController.login);
+router.post('/login', loginLimiter, validate(loginSchema), authController.login);
+// Second login step, limited too, so a 6-digit code can't be brute-forced.
+router.post(
+  '/login/2fa',
+  authLimiter,
+  validate(twoFactorLoginSchema),
+  authController.twoFactorLogin,
+);
 
-router.post('/refresh', authController.refresh);
+// Google OAuth, browser redirects (GET), not JSON APIs. Step 1 sends the user
+// to Google; step 2 is the callback Google redirects back to. A signed state
+// cookie guards the handshake against CSRF (see the controller).
+router.get('/oauth/google', authController.googleRedirect);
+router.get('/oauth/google/callback', authController.googleCallback);
+
+// 2FA management, all require a live session.
+router.post('/2fa/setup', requireAuth, authController.startTwoFactor);
+router.post(
+  '/2fa/enable',
+  requireAuth,
+  validate(twoFactorCodeSchema),
+  authController.confirmTwoFactor,
+);
+router.post(
+  '/2fa/disable',
+  requireAuth,
+  validate(twoFactorCodeSchema),
+  authController.disableTwoFactor,
+);
+
+// Reset endpoints use the count-everything limiter (see rateLimiter.ts)
+router.post(
+  '/forgot-password',
+  resetLimiter,
+  validate(forgotPasswordSchema),
+  authController.forgotPassword,
+);
+router.post(
+  '/reset-password',
+  resetLimiter,
+  validate(resetPasswordSchema),
+  authController.resetPassword,
+);
+
+// Email verification, redeeming is public (clicked from an inbox, maybe not
+// signed in); resending needs a session and shares the reset limiter.
+router.post('/verify-email', resetLimiter, validate(verifyEmailSchema), authController.verifyEmail);
+router.post('/resend-verification', resetLimiter, requireAuth, authController.resendVerification);
+
+// Failed refreshes count like failed logins, a stolen-cookie brute force
+// shouldn't get unlimited tries.
+router.post('/refresh', authLimiter, authController.refresh);
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
+router.patch('/me', requireAuth, validate(updateProfileSchema), authController.updateMe);
+// Profile photo, multipart, image-only, streamed to Cloudinary by the service.
+router.post('/me/avatar', requireAuth, uploadSingle('file', 'image'), authController.updateAvatar);
+router.patch(
+  '/me/password',
+  authLimiter,
+  requireAuth,
+  validate(changePasswordSchema),
+  authController.changeMyPassword,
+);
 
 export default router;

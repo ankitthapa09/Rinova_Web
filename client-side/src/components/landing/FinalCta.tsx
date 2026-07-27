@@ -68,7 +68,7 @@ export default function FinalCta() {
 
         <p data-fade className="mt-12 inline-flex items-center gap-2 text-sm text-fog">
           <MapPin className="h-4 w-4" strokeWidth={1.5} />
-          Kathmandu Valley · Open daily 6 AM – 9 PM
+          Kathmandu Valley · Open daily 6 AM - 9 PM
         </p>
       </div>
     </section>

@@ -1,8 +1,8 @@
 import { Vehicle, type IVehicle, type VehicleDocument, type VehicleCategory } from '@/models/vehicle.model';
 
-// Data-access layer for vehicles — the only place that queries the Vehicle model.
+// Data-access layer for vehicles, the only place that queries the Vehicle model.
 
-// `images` is optional — the model hook derives it from imageUrl when absent.
+// `images` is optional, the model hook derives it from imageUrl when absent.
 export type CreateVehicleData = Omit<IVehicle, 'createdAt' | 'updatedAt' | 'featured' | 'isAvailable' | 'images'> &
   Partial<Pick<IVehicle, 'featured' | 'isAvailable' | 'images'>>;
 
@@ -13,14 +13,14 @@ export const vehicleRepository = {
     return Vehicle.create(data);
   },
 
-  /** Public catalog — listed vehicles only, newest first */
+  /** Public catalog, listed vehicles only, newest first */
   findAvailable(category?: VehicleCategory): Promise<VehicleDocument[]> {
     return Vehicle.find({ isAvailable: true, ...(category ? { category } : {}) })
       .sort({ featured: -1, createdAt: -1 })
       .exec();
   },
 
-  /** Admin view — everything, including unlisted vehicles */
+  /** Admin view, everything, including unlisted vehicles */
   findAll(): Promise<VehicleDocument[]> {
     return Vehicle.find().sort({ createdAt: -1 }).exec();
   },
@@ -38,7 +38,7 @@ export const vehicleRepository = {
   },
 
   /** `unset` lists paths to remove entirely (e.g. 'modelUrl' when the admin
-   *  deletes a vehicle's 3D model), as opposed to `data` which sets values. */
+   * deletes a vehicle's 3D model), as opposed to `data` which sets values. */
   async updateById(
     id: string,
     data: UpdateVehicleData,

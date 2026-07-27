@@ -5,6 +5,7 @@ import { Bike, Bus, Car, Truck, Caravan } from "lucide-react";
 import { washApi, formatSlot, type WashOrder, type WashOrderStatus } from "@/lib/washApi";
 import { formatNpr, type VehicleCategory } from "@/lib/vehicleApi";
 import { ApiError } from "@/lib/api";
+import { useFocusItem } from "@/lib/useFocusItem";
 import { toast } from "@/components/ui/toast";
 
 export const WASH_STATUS_STYLES: Record<WashOrderStatus, string> = {
@@ -23,7 +24,7 @@ const VEHICLE_ICONS: Record<VehicleCategory, typeof Car> = {
   bus: Bus,
 };
 
-/** 'Sat, Jul 18 · 10:30 AM' — the day and the arrival time together. */
+/** 'Sat, Jul 18 · 10:30 AM', the day and the arrival time together. */
 export function washWhen(order: WashOrder): string {
   const day = new Date(order.scheduledDate).toLocaleDateString("en-US", {
     weekday: "short",
@@ -33,7 +34,7 @@ export function washWhen(order: WashOrder): string {
   return `${day} · ${formatSlot(order.slot)}`;
 }
 
-/** The moment the wash begins — the deadline for calling it off. */
+/** The moment the wash begins, the deadline for calling it off. */
 function washStart(order: WashOrder): number {
   const [hours, minutes] = order.slot.split(":").map(Number);
   const at = new Date(order.scheduledDate);
@@ -48,7 +49,7 @@ export function isWashCancellable(order: WashOrder): boolean {
 }
 
 /** Rows of the customer's own wash orders, with cancel. Parent owns the data;
- *  onChanged fires after a successful cancel so it can refetch. */
+ * onChanged fires after a successful cancel so it can refetch. */
 export default function WashesList({
   orders,
   onChanged,
@@ -57,6 +58,7 @@ export default function WashesList({
   onChanged: () => void;
 }) {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  useFocusItem(orders);
 
   const cancelOrder = async (order: WashOrder) => {
     if (cancellingId) return;
@@ -79,7 +81,8 @@ export default function WashesList({
         return (
           <li
             key={order._id}
-            className="flex items-center gap-4 border-b border-line/60 pb-3 last:border-0 last:pb-0"
+            id={`item-${order._id}`}
+            className="flex scroll-mt-28 items-center gap-4 rounded-lg border-b border-line/60 pb-3 transition duration-500 last:border-0 last:pb-0 data-[focus=true]:bg-accent/5 data-[focus=true]:ring-2 data-[focus=true]:ring-accent"
           >
             <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded-lg bg-night text-[#4EA8DE]">
               <Icon className="h-5 w-5" strokeWidth={1.5} />

@@ -1,5 +1,5 @@
 import { request } from "@/lib/api";
-import type { VehicleCategory } from "@/lib/vehicleApi";
+import type { VehicleCategory, VehicleSpecs } from "@/lib/vehicleApi";
 
 export type BookingStatus = "pending" | "confirmed" | "declined" | "cancelled";
 
@@ -11,6 +11,9 @@ export interface BookingVehicle {
   imageUrl: string;
   pricePerDay: number;
   category: VehicleCategory;
+  // Included in the admin join for the detail drawer.
+  tagline?: string;
+  specs?: VehicleSpecs;
 }
 
 /** The customer fields joined in for the admin view. */
@@ -19,6 +22,10 @@ export interface BookingUser {
   name: string;
   email: string;
   phone: string;
+  // Included in the admin join for the detail drawer.
+  address?: string;
+  isEmailVerified?: boolean;
+  createdAt?: string;
 }
 
 export interface Booking {
@@ -36,7 +43,7 @@ export interface Booking {
 }
 
 export const bookingApi = {
-  // ── Customer ─────────────────────────────────────────────
+  // Customer
   async create(input: { vehicleSlug: string; startDate: string; endDate: string }): Promise<Booking> {
     const { booking } = await request<{ booking: Booking }>("/bookings", {
       method: "POST",
@@ -57,7 +64,7 @@ export const bookingApi = {
     return booking;
   },
 
-  // ── Admin ────────────────────────────────────────────────
+  // Admin
   async listAll(): Promise<Booking[]> {
     const { bookings } = await request<{ bookings: Booking[] }>("/bookings");
     return bookings;

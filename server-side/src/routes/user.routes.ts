@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from '@/middlewares/auth.middleware';
 
 const router = Router();
 
-// Admin-only account management. Whole router is gated — no public routes here.
+// Admin-only account management. Whole router is gated, no public routes here.
 router.use(requireAuth, requireRole('admin'));
 
 router.get('/', userController.list);

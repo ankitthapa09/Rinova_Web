@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
+import { Lock } from "lucide-react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
 
 export type SubmitStatus = "idle" | "loading" | "success";
@@ -9,17 +10,22 @@ interface MagneticSubmitProps {
   children: ReactNode;
   status?: SubmitStatus;
   successLabel?: string;
+  /** Disables the button and shows a lock + countdown (e.g. account lockout). */
+  locked?: boolean;
+  lockedLabel?: string;
 }
 
 /**
- * The MagneticButton pattern as a real <button type="submit">: follows the
+ * The MagneticButton pattern as a real <button type="submit">, follows the
  * cursor, swaps its label upward on hover, and morphs into a spinner then
- * a success check while the form resolves.
+ * a success check while the form resolves. Can also show a locked state.
  */
 export default function MagneticSubmit({
   children,
   status = "idle",
   successLabel = "Done",
+  locked = false,
+  lockedLabel = "Locked",
 }: MagneticSubmitProps) {
   const ref = useRef<HTMLButtonElement>(null);
 
@@ -46,12 +52,21 @@ export default function MagneticSubmit({
     <button
       ref={ref}
       type="submit"
-      disabled={status !== "idle"}
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-      className="magnetic inline-flex w-full items-center justify-center gap-3 rounded-full bg-accent px-8 py-4 text-sm font-medium tracking-wide text-night shadow-glow transition-colors duration-300 hover:bg-[#FF7A45] disabled:cursor-default disabled:hover:bg-accent"
+      disabled={status !== "idle" || locked}
+      onMouseMove={locked ? undefined : onMove}
+      onMouseLeave={locked ? undefined : onLeave}
+      className={`magnetic inline-flex w-full items-center justify-center gap-2.5 rounded-full px-8 py-4 text-sm font-medium tracking-wide transition-colors duration-300 disabled:cursor-default ${
+        locked
+          ? "cursor-not-allowed border border-line bg-surface text-fog"
+          : "bg-accent text-night shadow-glow hover:bg-[#FF7A45] disabled:hover:bg-accent"
+      }`}
     >
-      {status === "loading" ? (
+      {locked ? (
+        <>
+          <Lock className="h-4 w-4" />
+          <span>{lockedLabel}</span>
+        </>
+      ) : status === "loading" ? (
         <>
           <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-night/25 border-t-night" />
           <span>One moment…</span>

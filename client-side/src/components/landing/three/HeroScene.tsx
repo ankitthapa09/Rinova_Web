@@ -9,7 +9,7 @@ import PauseWhenHidden from "./PauseWhenHidden";
 import VehicleModel from "./VehicleModel";
 
 const CAR_URL = "/models/jeep_rubicon.glb";
-// "Convertible" by Poly by Google — CC-BY 3.0 (see public/models/LICENSE.txt)
+// "Convertible" by Poly by Google, CC-BY 3.0 (see public/models/LICENSE.txt)
 useGLTF.preload(CAR_URL);
 
 const GROUND_Y = -1.5;
@@ -44,7 +44,7 @@ function CarRig({ animate }: { animate: boolean }) {
 }
 
 /**
- * Hero centerpiece: the convertible on a dark stage, centered low so the
+ * Hero centerpiece, the convertible on a dark stage, centered low so the
  * headline sits above it. Scroll orbits the car; the cursor tilts it.
  */
 export default function HeroScene({ animate = true }: { animate?: boolean }) {
@@ -62,7 +62,7 @@ export default function HeroScene({ animate = true }: { animate?: boolean }) {
 
         <CarRig animate={animate} />
 
-        {/* Procedural studio reflections — no external HDR fetch. 128 is plenty
+        {/* Procedural studio reflections, no external HDR fetch. 128 is plenty
             for soft studio bounce; 256 doubled the load-time hitch for
             reflections nobody can resolve on a car this size. */}
         <Environment resolution={128}>

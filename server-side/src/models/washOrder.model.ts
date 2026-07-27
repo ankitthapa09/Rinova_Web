@@ -2,8 +2,8 @@ import { Schema, model, Types, type HydratedDocument, type Model } from 'mongoos
 import { VEHICLE_CATEGORIES, type VehicleCategory } from '@/models/vehicle.model';
 import { WASH_PACKAGE_IDS, WASH_SLOTS, type WashPackageId, type WashSlot } from '@/config/washCatalogue';
 
-/** A wash runs to completion, unlike a rental — so 'completed' is a real state
- *  the admin sets on the day. */
+/** A wash runs to completion, unlike a rental, so 'completed' is a real state
+ * the admin sets on the day. */
 export const WASH_ORDER_STATUSES = [
   'pending',
   'confirmed',
@@ -22,16 +22,16 @@ export interface IWashOrder {
   packageName: string;
   vehicleType: VehicleCategory;
 
-  // Their own vehicle — we hold no record of it, so they describe it
+  // Their own vehicle, we hold no record of it, so they describe it
   vehicleLabel: string;
   plateNumber: string;
 
-  // When — a slot on a day, not a date range
+  // When, a slot on a day, not a date range
   /** Midnight of the booked day */
   scheduledDate: Date;
   slot: WashSlot;
 
-  /** Priced by the server from the catalogue — never sent by the client */
+  /** Priced by the server from the catalogue, never sent by the client */
   price: number;
   status: WashOrderStatus;
   notes?: string;
@@ -116,17 +116,17 @@ const washOrderSchema = new Schema<IWashOrder, WashOrderModel>(
   },
 );
 
-/** Store the day flat at midnight so every order in a slot compares equal —
- *  a stray timestamp would quietly split one slot into two. */
+/** Store the day flat at midnight so every order in a slot compares equal -
+ * a stray timestamp would quietly split one slot into two. */
 washOrderSchema.pre('validate', function normaliseDay() {
   if (this.scheduledDate) {
     this.scheduledDate.setHours(0, 0, 0, 0);
   }
 });
 
-// The bay count: "how many confirmed orders already sit in this slot today?"
+// The bay count, "how many confirmed orders already sit in this slot today?"
 washOrderSchema.index({ scheduledDate: 1, slot: 1, status: 1 });
-// The double-booking guard: "is this plate already booked that day?"
+// The double-booking guard, "is this plate already booked that day?"
 washOrderSchema.index({ plateNumber: 1, scheduledDate: 1, status: 1 });
 
 export const WashOrder = model<IWashOrder, WashOrderModel>('WashOrder', washOrderSchema);

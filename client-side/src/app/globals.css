@@ -21,6 +21,13 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Keep anchored sections clear of the fixed navbar on native/reduced-motion
+   jumps. Scoped to :not(.lenis) so it doesn't stack on top of the pixel offset
+   Lenis already applies (Lenis adds the .lenis class to <html> while active). */
+html:not(.lenis) {
+  scroll-padding-top: 80px;
+}
+
 html.lenis,
 html.lenis body {
   height: auto;
@@ -38,7 +45,7 @@ body {
   overflow-x: clip;
 }
 
-/* Film grain over everything — the analogue texture that sells the dark theme */
+/* Film grain over everything, the analogue texture that sells the dark theme */
 body::after {
   content: "";
   position: fixed;
@@ -54,7 +61,7 @@ body::after {
   color: var(--night);
 }
 
-/* ── Scrollbar ────────────────────────────────────────────── */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -70,14 +77,14 @@ body::after {
   background: var(--accent);
 }
 
-/* ── Focus visibility (WCAG) ──────────────────────────────── */
+/* Focus visibility (WCAG) */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 2px;
 }
 
-/* ── Mask line reveals ────────────────────────────────────────
+/* Mask line reveals
    Lines start shifted below their overflow-hidden wrapper and
    GSAP slides them to 0. Initial hidden state only applies when
    motion is allowed, so reduced-motion users always see content. */
@@ -110,7 +117,7 @@ body::after {
   }
 }
 
-/* ── Character cascade reveals ────────────────────────────── */
+/* Character cascade reveals */
 .split-line {
   display: block;
   overflow: hidden;
@@ -122,7 +129,7 @@ body::after {
   transform-origin: bottom left;
 }
 
-/* ── Fleet watermark swap ─────────────────────────────────── */
+/* Fleet watermark swap */
 @keyframes fleet-word-in {
   from {
     opacity: 0;
@@ -137,7 +144,7 @@ body::after {
   animation: fleet-word-in 0.9s var(--ease-expo) both;
 }
 
-/* ── Outlined display text (section numbers, watermarks) ──── */
+/* Outlined display text (section numbers, watermarks) */
 .text-outline {
   color: transparent;
   -webkit-text-stroke: 1px rgba(244, 241, 234, 0.16);
@@ -151,14 +158,14 @@ body::after {
   -webkit-text-stroke: 1px rgba(11, 11, 13, 0.28);
 }
 
-/* ── Orange glow orbs (ambient light pools) ───────────────── */
+/* Orange glow orbs (ambient light pools) */
 .glow-orb {
   pointer-events: none;
   border-radius: 9999px;
   background: radial-gradient(closest-side, rgba(255, 92, 26, 0.16), transparent);
 }
 
-/* ── Hero scroll cue: dot travelling down a thin line ─────── */
+/* Hero scroll cue, dot travelling down a thin line */
 @keyframes cue-travel {
   0% {
     transform: translateY(0);
@@ -179,7 +186,7 @@ body::after {
   animation: cue-travel 2.2s var(--ease-expo) infinite;
 }
 
-/* ── Toasts ───────────────────────────────────────────────── */
+/* Toasts */
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -206,7 +213,7 @@ body::after {
   animation: toast-drain 4.2s linear forwards;
 }
 
-/* ── Nav link underline: draws left → right ───────────────── */
+/* Nav link underline, draws left to right */
 .nav-link {
   position: relative;
 }
@@ -227,7 +234,7 @@ body::after {
   transform: scaleX(1);
 }
 
-/* ── Magnetic button label swap ───────────────────────────── */
+/* Magnetic button label swap */
 .btn-label {
   display: block;
   overflow: hidden;
@@ -247,7 +254,7 @@ body::after {
   transform: translateY(-50%);
 }
 
-/* ── Card lift hover: rise + orange under-glow ────────────── */
+/* Card lift hover, rise + orange under-glow */
 .card-lift {
   transition:
     transform 0.5s var(--ease-expo),
@@ -274,7 +281,7 @@ body::after {
   transform: translateX(8px);
 }
 
-/* ── Reduced motion: kill decorative movement ─────────────── */
+/* Reduced motion, kill decorative movement */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

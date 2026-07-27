@@ -3,16 +3,18 @@ import AuthShell from "@/components/auth/AuthShell";
 import SignupForm from "@/components/auth/SignupForm";
 
 export const metadata: Metadata = {
-  title: "Create Account — Rinova",
+  title: "Create Account | Rinova",
   description: "Join Rinova to book premium vehicle rentals and professional washes in minutes.",
 };
 
 export default function SignupPage() {
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
   return (
     <AuthShell
       eyebrow="Join the Club"
       title={[{ text: "Join the" }, { text: "garage.", accent: true }]}
-      subtitle="One account for rentals and washes — book a ride or a detail in under a minute."
+      subtitle="One account for rentals and washes. Book a ride or a detail in under a minute."
       watermark="MEMBER"
       vehicleUrl="/models/suv.glb"
       vehicleLength={3.9}
@@ -20,7 +22,7 @@ export default function SignupPage() {
       switchLabel="Sign in"
       switchHref="/login"
     >
-      <SignupForm />
+      <SignupForm siteKey={siteKey} />
     </AuthShell>
   );
 }

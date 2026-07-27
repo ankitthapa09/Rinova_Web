@@ -79,7 +79,7 @@ export default function WashBookingView() {
       .catch(() => toast.error("Couldn't load the wash menu. Is the server running?"));
   }, []);
 
-  // Slots belong to a day — every date change asks the server what's left.
+  // Slots belong to a day, every date change asks the server what's left.
   useEffect(() => {
     if (!date) {
       setSlots(null);
@@ -157,7 +157,7 @@ export default function WashBookingView() {
         notes: notes.trim() || undefined,
       });
       setStatus("success");
-      toast.success(`Wash requested — ${pkg?.name} at ${formatSlot(slot)}. We'll confirm it shortly.`);
+      toast.success(`Wash requested, ${pkg?.name} at ${formatSlot(slot)}. We'll confirm it shortly.`);
       window.setTimeout(() => router.push("/dashboard/washes"), 1400);
     } catch (err) {
       setStatus("idle");
@@ -206,7 +206,7 @@ export default function WashBookingView() {
           </div>
         ) : (
           <div className="mt-10 grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:gap-12">
-            {/* ── What you're buying ───────────────────────────── */}
+            {/* What you're buying */}
             <div data-wash-item className="lg:sticky lg:top-28 lg:self-start">
               <div className="relative overflow-hidden rounded-3xl border border-line bg-surface/60 p-8">
                 <Droplets
@@ -222,10 +222,10 @@ export default function WashBookingView() {
 
                 <p className="mt-7 font-serif text-5xl tracking-tight text-cream">
                   <span className="mr-2 text-[0.32em] uppercase tracking-[0.08em] text-fog">NPR</span>
-                  {price !== undefined ? price.toLocaleString("en-US") : "—"}
+                  {price !== undefined ? price.toLocaleString("en-US") : "-"}
                 </p>
                 <p className="mt-1 text-[12px] text-fog">
-                  Priced by our garage — you pay at the bay.
+                  Priced by our garage, you pay at the bay.
                 </p>
 
                 <ul className="mt-7 divide-y divide-line border-y border-line">
@@ -239,7 +239,7 @@ export default function WashBookingView() {
               </div>
             </div>
 
-            {/* ── The form ─────────────────────────────────────── */}
+            {/* The form */}
             <form data-wash-item onSubmit={onSubmit} className="rounded-3xl border border-line bg-surface/60 p-6 md:p-8">
               {/* Package */}
               <p className={labelClass}>Package</p>

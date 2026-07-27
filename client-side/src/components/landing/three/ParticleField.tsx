@@ -45,7 +45,7 @@ function Mist({ animate }: { animate: boolean }) {
   );
 }
 
-/** Drifting orange mist — ambient 3D depth behind the final CTA. */
+/** Drifting orange mist, ambient 3D depth behind the final CTA. */
 export default function ParticleField({ animate = true }: { animate?: boolean }) {
   return (
     <Canvas

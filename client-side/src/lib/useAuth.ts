@@ -10,11 +10,11 @@ interface AuthState {
 
 /**
  * Resolves the current session. The access token lives in memory, so after a
- * hard navigation it's gone — we restore it from the httpOnly refresh cookie
- * (refresh → me). Resolves to user: null when there's no valid session.
+ * hard navigation it's gone, we restore it from the httpOnly refresh cookie
+ * (refresh to me). Resolves to user, null when there's no valid session.
  *
- * `passive` (navbar and other optional UI): when nothing suggests a session
- * exists, resolve to null without any network calls — anonymous visitors
+ * `passive` (navbar and other optional UI), when nothing suggests a session
+ * exists, resolve to null without any network calls, anonymous visitors
  * shouldn't fire doomed 401 probes on every page.
  */
 export function useAuth(passive = false): AuthState {

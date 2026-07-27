@@ -4,15 +4,15 @@ import { logger } from '@/config/logger';
 import { User } from '@/models/user.model';
 
 
- 
- // Run with:  npm run seed:admin
- 
+
+ // Run with,  npm run seed:admin
+
 async function seedAdmin(): Promise<void> {
   const email = env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = env.ADMIN_PASSWORD;
 
   // These two are optional in the env schema so the API can boot without them,
-  // but the seed is meaningless without them — fail loudly.
+  // but the seed is meaningless without them, fail loudly.
   if (!email || !password) {
     logger.error('Cannot seed admin: set ADMIN_EMAIL and ADMIN_PASSWORD in .env');
     process.exit(1);

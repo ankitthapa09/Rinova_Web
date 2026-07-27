@@ -11,7 +11,7 @@ export interface VehicleSpecs {
   engineCC?: number;
   // EV only - driving range on a full charge, in km
   range?: number;
-  // EV only - battery capacity in kWh 
+  // EV only - battery capacity in kWh
   batteryCapacity?: number;
 }
 
@@ -24,9 +24,9 @@ export interface Vehicle {
   pricePerDay: number;
   specs: VehicleSpecs;
   imageUrl: string;
-  /** Photo gallery, up to 4 — images[0] is the cover and mirrors imageUrl */
+  /** Photo gallery, up to 4, images[0] is the cover and mirrors imageUrl */
   images: string[];
-  /** Optional 3D showcase — detail page falls back to the cover photo without it */
+  /** Optional 3D showcase, detail page falls back to the cover photo without it */
   modelUrl?: string;
   /** Normalized world length for the shared 3D loader (only with modelUrl) */
   modelLength?: number;
@@ -47,7 +47,7 @@ export interface VehicleInput {
   pricePerDay: number;
   specs: VehicleSpecs;
   imageUrl: string;
-  /** Optional gallery (max 4) — the first entry becomes the cover */
+  /** Optional gallery (max 4), the first entry becomes the cover */
   images?: string[];
   modelUrl?: string;
   modelLength?: number;
@@ -89,13 +89,13 @@ export const vehicleApi = {
       const { vehicle } = await request<{ vehicle: Vehicle }>(`/vehicles/${slug}`);
       return vehicle;
     } catch (err) {
-      // A missing/unlisted vehicle 404s — surface that as null, as callers expect.
+      // A missing/unlisted vehicle 404s, surface that as null, as callers expect.
       if (err instanceof ApiError && err.status === 404) return null;
       throw err;
     }
   },
 
-  // ── Admin (all gated by requireRole('admin') on the server) ──
+  // Admin (all gated by requireRole('admin') on the server)
   async listAll(): Promise<Vehicle[]> {
     const { vehicles } = await request<{ vehicles: Vehicle[] }>("/vehicles/all");
     return vehicles;

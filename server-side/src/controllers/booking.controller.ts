@@ -3,7 +3,7 @@ import { bookingService } from '@/services/booking.service';
 import { catchAsync } from '@/utils/catchAsync';
 
 export const bookingController = {
-  // ── Customer ─────────────────────────────────────────────
+  // Customer
 
   create: catchAsync(async (req: Request, res: Response) => {
     const booking = await bookingService.create(req.user!.sub, req.body);
@@ -20,7 +20,7 @@ export const bookingController = {
     res.status(200).json({ success: true, data: { booking } });
   }),
 
-  // ── Admin ────────────────────────────────────────────────
+  // Admin
 
   listAll: catchAsync(async (_req: Request, res: Response) => {
     const bookings = await bookingService.listAll();

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { CarFront, Droplets, ArrowRight, BadgeCheck, CircleDashed } from "lucide-react";
 import { gsap, EASE, MOTION_OK } from "@/components/landing/gsap";
+import { authApi, ApiError } from "@/lib/api";
 import { bookingApi, type Booking } from "@/lib/bookingApi";
 import { washApi, type WashOrder } from "@/lib/washApi";
+import { toast } from "@/components/ui/toast";
 import { useDashboardUser } from "@/components/dashboard/DashboardShell";
 import RentalsList from "@/components/dashboard/RentalsList";
 import WashesList from "@/components/dashboard/WashesList";
@@ -61,9 +63,22 @@ export default function DashboardOverview() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [washes, setWashes] = useState<WashOrder[] | null>(null);
+  const [resending, setResending] = useState(false);
+
+  const resendVerification = async () => {
+    if (resending) return;
+    setResending(true);
+    try {
+      toast.success(await authApi.resendVerification());
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Couldn't send the email. Try again.");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const reload = useCallback(async () => {
-    // Two independent lists — one failing shouldn't blank the other.
+    // Two independent lists, one failing shouldn't blank the other.
     const [rentals, washOrders] = await Promise.allSettled([
       bookingApi.listMine(),
       washApi.listMine(),
@@ -110,7 +125,7 @@ export default function DashboardOverview() {
           {greeting()}, <span className="italic text-accent">{user.name.split(" ")[0]}.</span>
         </h1>
         <p className="mt-3 text-[15px] text-fog">
-          Your garage at a glance — rentals, washes, and account details.
+          Your garage at a glance, rentals, washes, and account details.
         </p>
       </header>
 
@@ -118,12 +133,12 @@ export default function DashboardOverview() {
       <section className="mt-10 grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Active Rentals"
-          value={bookings === null ? "—" : activeRentals}
+          value={bookings === null ? "-" : activeRentals}
           hint={activeRentals > 0 ? "Pending & confirmed bookings" : "Nothing on the road yet"}
         />
         <StatCard
           label="Wash Orders"
-          value={washes === null ? "—" : activeWashes}
+          value={washes === null ? "-" : activeWashes}
           hint={activeWashes > 0 ? "Pending & confirmed washes" : "No washes scheduled"}
         />
         <StatCard label="Member Since" value={memberSince} hint="Welcome to the club" />
@@ -139,7 +154,7 @@ export default function DashboardOverview() {
             href="/#fleet"
             icon={CarFront}
             title="Book a vehicle"
-            copy="Bikes to buses — pick your ride from the fleet."
+            copy="Bikes to buses, pick your ride from the fleet."
           />
           <ActionCard
             href="/wash/book"
@@ -162,9 +177,15 @@ export default function DashboardOverview() {
                 <BadgeCheck className="h-3.5 w-3.5" /> Verified
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-fog">
-                <CircleDashed className="h-3.5 w-3.5" /> Unverified
-              </span>
+              <button
+                onClick={resendVerification}
+                disabled={resending}
+                title="Send the verification email again"
+                className="inline-flex items-center gap-1.5 text-[11px] text-fog transition-colors hover:text-accent disabled:opacity-50"
+              >
+                <CircleDashed className={`h-3.5 w-3.5 ${resending ? "animate-spin" : ""}`} />
+                {resending ? "Sending…" : "Unverified, resend email"}
+              </button>
             )}
           </div>
           <dl className="mt-5 space-y-4 text-sm">
@@ -216,7 +237,7 @@ export default function DashboardOverview() {
         )}
       </section>
 
-      {/* Recent washes — only once there's something to show; the empty case is
+      {/* Recent washes, only once there's something to show; the empty case is
           already covered by the panel above. */}
       {washes && washes.length > 0 ? (
         <section data-dash-item className="mt-4 rounded-2xl border border-line bg-surface/60 p-6">

@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { LayoutDashboard, CarFront, Droplets, UserRound, LogOut } from "lucide-react";
+import { LayoutDashboard, CarFront, Droplets, Bell, UserRound, LogOut } from "lucide-react";
 import Cursor from "@/components/landing/Cursor";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { authApi, type ApiUser } from "@/lib/api";
 import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
 
-// The shell resolves the session once and shares it — child pages read it from
+// The shell resolves the session once and shares it, child pages read it from
 // context instead of re-running the restore.
 const DashboardUserContext = createContext<ApiUser | null>(null);
 
@@ -38,7 +39,8 @@ const NAV: NavItem[] = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
   { label: "My Rentals", href: "/dashboard/rentals", icon: CarFront },
   { label: "Wash Orders", href: "/dashboard/washes", icon: Droplets },
-  { label: "Profile", href: "/dashboard/profile", icon: UserRound, soon: true },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Profile", href: "/dashboard/profile", icon: UserRound },
 ];
 
 function NavLinks({ pathname }: { pathname: string }) {
@@ -93,7 +95,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       toast.error("Please sign in to view your dashboard.");
       router.replace("/login");
     } else if (user.role === "admin") {
-      // Admins have their own home — keep the two dashboards from mixing.
+      // Admins have their own home, keep the two dashboards from mixing.
       router.replace("/admin");
     }
   }, [loading, user, router]);
@@ -124,11 +126,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <div className="relative flex min-h-[100svh]">
         <Cursor />
 
-        {/* ── Sidebar ─────────────────────────────────────── */}
+        {/* Sidebar */}
         <aside className="sticky top-0 hidden h-[100svh] w-[250px] shrink-0 flex-col border-r border-line px-6 py-8 lg:flex">
-          <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
-            RINOVA
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
+              RINOVA
+            </Link>
+            <NotificationBell />
+          </div>
 
           <nav className="mt-12 flex flex-col gap-1">
             <NavLinks pathname={pathname} />
@@ -136,9 +141,18 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
           <div className="mt-auto border-t border-line pt-5">
             <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-medium text-[13px] text-night">
-                {initials(user.name)}
-              </span>
+              {user.profileImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.profileImageUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-medium text-[13px] text-night">
+                  {initials(user.name)}
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] text-cream">{user.name}</span>
                 <span className="block truncate text-[11px] text-fog">{user.email}</span>
@@ -154,7 +168,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        {/* ── Main ────────────────────────────────────────── */}
+        {/* Main */}
         <div className="relative min-w-0 flex-1 overflow-hidden">
           <div aria-hidden className="glow-orb absolute -right-[20%] -top-[30%] h-[50vw] w-[50vw]" />
 
@@ -164,13 +178,16 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <Link href="/" className="font-serif text-xl tracking-[0.08em] text-cream">
                 RINOVA
               </Link>
-              <button
-                onClick={onLogout}
-                aria-label="Sign out"
-                className="rounded-full p-2 text-fog transition-colors hover:text-accent"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <NotificationBell />
+                <button
+                  onClick={onLogout}
+                  aria-label="Sign out"
+                  className="rounded-full p-2 text-fog transition-colors hover:text-accent"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Mobile nav */}

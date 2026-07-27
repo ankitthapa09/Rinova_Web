@@ -10,7 +10,7 @@ interface MaskTextProps {
 
 /**
  * Headline whose lines each live in an overflow-hidden wrapper so GSAP can
- * slide them up from 115% — the signature scroll-mask reveal.
+ * slide them up from 115%, the signature scroll-mask reveal.
  */
 export default function MaskText({ lines, as: Tag = "h2", className, loadTriggered }: MaskTextProps) {
   return (

@@ -10,7 +10,7 @@ export interface IBooking {
   vehicle: Types.ObjectId;
   startDate: Date;
   endDate: Date;
-  /** Rental length in days — computed server-side, stored for display */
+  /** Rental length in days, computed server-side, stored for display */
   days: number;
   totalPrice: number;
   status: BookingStatus;
@@ -70,7 +70,7 @@ const bookingSchema = new Schema<IBooking, BookingModel>(
   },
 );
 
-// Cross-field rule: the rental must end after it starts.
+// Cross-field rule, the rental must end after it starts.
 bookingSchema.pre('validate', function checkDates() {
   if (this.startDate && this.endDate && this.endDate <= this.startDate) {
     this.invalidate('endDate', 'Return date must be after the pick-up date');

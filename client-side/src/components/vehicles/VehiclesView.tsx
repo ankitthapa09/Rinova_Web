@@ -23,7 +23,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   })),
 ];
 
-/** Placeholder card while the catalog loads — same silhouette as the real one. */
+/** Placeholder card while the catalog loads, same silhouette as the real one. */
 function SkeletonCard() {
   return (
     <div className="animate-pulse overflow-hidden rounded-2xl border border-line bg-surface/40">
@@ -43,7 +43,7 @@ export default function VehiclesView() {
   const [vehicles, setVehicles] = useState<Vehicle[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
 
-  // Landing showcase links here as /vehicles?category=suv — preset the filter
+  // Landing showcase links here as /vehicles?category=suv, preset the filter
   useEffect(() => {
     const c = new URLSearchParams(window.location.search).get("category");
     if (c && c in CATEGORY_LABELS) setFilter(c as VehicleCategory);
@@ -67,7 +67,7 @@ export default function VehiclesView() {
       ? vehicles
       : vehicles.filter((v) => v.category === filter);
 
-  // Page entrance: headline cascade, then rail rises in
+  // Page entrance, headline cascade, then rail rises in
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
@@ -159,7 +159,7 @@ export default function VehiclesView() {
         </div>
 
         {!loading && visible.length === 0 ? (
-          <p className="mt-16 text-center text-fog">Nothing in this category yet — check back soon.</p>
+          <p className="mt-16 text-center text-fog">Nothing in this category yet, check back soon.</p>
         ) : null}
       </div>
     </div>

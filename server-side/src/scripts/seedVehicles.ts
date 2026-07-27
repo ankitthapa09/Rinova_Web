@@ -2,10 +2,10 @@ import { connectDatabase, disconnectDatabase } from '@/config/db';
 import { logger } from '@/config/logger';
 import { Vehicle, type IVehicle } from '@/models/vehicle.model';
 
- 
- // Run with:  npm run seed:vehicles
- 
-// `images` is omitted too — the model's sync hook derives it from imageUrl.
+
+ // Run with,  npm run seed:vehicles
+
+// `images` is omitted too, the model's sync hook derives it from imageUrl.
 type SeedVehicle = Omit<IVehicle, 'createdAt' | 'updatedAt' | 'isAvailable' | 'featured' | 'images'> & {
   featured?: boolean;
 };
@@ -22,7 +22,7 @@ const FLEET: SeedVehicle[] = [
     modelUrl: '/models/scooter.glb',
     modelLength: 2.4,
     description:
-      'Light, nimble, and easy on fuel — the fastest way through Ring Road traffic and tight gallis alike.',
+      'Light, nimble, and easy on fuel, the fastest way through Ring Road traffic and tight gallis alike.',
   },
   {
     slug: 'honda-cb750',
@@ -49,7 +49,7 @@ const FLEET: SeedVehicle[] = [
     modelUrl: '/models/car.glb',
     modelLength: 3.9,
     description:
-      'The one from our showroom floor — a comfortable open-top cruiser for city errands and weekend escapes.',
+      'The one from our showroom floor, a comfortable open-top cruiser for city errands and weekend escapes.',
   },
   {
     slug: 'lamborghini-gallardo',
@@ -63,7 +63,7 @@ const FLEET: SeedVehicle[] = [
     modelLength: 4.3,
     featured: true,
     description:
-      'A 5.2L V10 with the roof off. Our crown jewel — driven rarely, washed obsessively, rented by the brave.',
+      'A 5.2L V10 with the roof off. Our crown jewel, driven rarely, washed obsessively, rented by the brave.',
   },
   {
     slug: 'trail-suv',
@@ -76,7 +76,7 @@ const FLEET: SeedVehicle[] = [
     modelUrl: '/models/suv.glb',
     modelLength: 3.9,
     description:
-      'High clearance and seven seats — the default answer for Mustang roads, monsoon potholes, and family trips.',
+      'High clearance and seven seats, the default answer for Mustang roads, monsoon potholes, and family trips.',
   },
   {
     slug: 'family-van',
@@ -102,7 +102,7 @@ const FLEET: SeedVehicle[] = [
     modelUrl: '/models/bus.glb',
     modelLength: 5.2,
     description:
-      'For weddings, office outings, and trekking groups — one vehicle, everyone together, driver included.',
+      'For weddings, office outings, and trekking groups, one vehicle, everyone together, driver included.',
   },
 ];
 
@@ -114,7 +114,7 @@ async function seedVehicles(): Promise<void> {
     let updated = 0;
 
     for (const vehicle of FLEET) {
-      // Upsert by slug — the stable identity. runValidators keeps the model's
+      // Upsert by slug, the stable identity. runValidators keeps the model's
       // rules (regex, enums, ranges) in force on updates too.
       const res = await Vehicle.updateOne(
         { slug: vehicle.slug },

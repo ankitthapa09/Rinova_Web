@@ -1,11 +1,26 @@
+import crypto from 'node:crypto';
 import type { Request, Response, CookieOptions } from 'express';
 import { authService } from '@/services/auth.service';
+import { oauthService } from '@/services/oauth.service';
 import { userRepository } from '@/repositories/user.repository';
 import { catchAsync } from '@/utils/catchAsync';
 import { AppError } from '@/utils/AppError';
+import { logger } from '@/config/logger';
 import { env, isProd } from '@/config/env';
 
 const REFRESH_COOKIE = 'refreshToken';
+const OAUTH_STATE_COOKIE = 'oauthState';
+
+// The state cookie must survive the top-level redirect *back* from Google, so it
+// is SameSite=lax, 'strict' would be dropped on that cross-site navigation and
+// every callback would fail the CSRF check. Short-lived and httpOnly regardless.
+const stateCookieOptions: CookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: 'lax',
+  path: '/api/v1/auth',
+  maxAge: 10 * 60 * 1000,
+};
 
 /** '15m' | '12h' | '7d' - milliseconds */
 function durationToMs(value: string): number {
@@ -29,7 +44,9 @@ const refreshCookieOptions: CookieOptions = {
 
 export const authController = {
   register: catchAsync(async (req: Request, res: Response) => {
-    const { user, tokens } = await authService.register(req.body);
+    const { user, tokens } = await authService.register(req.body, {
+      userAgent: req.get('user-agent'),
+    });
 
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
     res.status(201).json({
@@ -39,7 +56,30 @@ export const authController = {
   }),
 
   login: catchAsync(async (req: Request, res: Response) => {
-    const { user, tokens } = await authService.login(req.body);
+    const outcome = await authService.login(req.body, { userAgent: req.get('user-agent') });
+
+    // 2FA on, no session yet, return the challenge and let the client ask for a code.
+    if ('twoFactorRequired' in outcome) {
+      res.status(200).json({
+        success: true,
+        data: { twoFactorRequired: true, challengeToken: outcome.challengeToken },
+      });
+      return;
+    }
+
+    res.cookie(REFRESH_COOKIE, outcome.tokens.refreshToken, refreshCookieOptions);
+    res.status(200).json({
+      success: true,
+      data: { user: outcome.user, accessToken: outcome.tokens.accessToken },
+    });
+  }),
+
+  twoFactorLogin: catchAsync(async (req: Request, res: Response) => {
+    const { user, tokens } = await authService.verifyTwoFactorLogin(
+      req.body.challengeToken,
+      req.body.code,
+      { userAgent: req.get('user-agent') },
+    );
 
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
     res.status(200).json({
@@ -48,22 +88,110 @@ export const authController = {
     });
   }),
 
+  // Google OAuth
+  // Step 1, plant a random `state` in a cookie and bounce the browser to Google.
+  googleRedirect: catchAsync(async (_req: Request, res: Response) => {
+    if (!oauthService.isConfigured()) throw AppError.notFound('Google sign-in is not available');
+
+    const state = crypto.randomBytes(16).toString('hex');
+    res.cookie(OAUTH_STATE_COOKIE, state, stateCookieOptions);
+    res.redirect(oauthService.buildAuthUrl(state));
+  }),
+
+  // Step 2, Google redirects back here. Verify state (CSRF), exchange the code,
+  // resolve the account, and hand the session to the client via a redirect.
+  // Errors redirect to the client with an ?error code rather than showing JSON.
+  googleCallback: catchAsync(async (req: Request, res: Response) => {
+    const landing = `${env.CLIENT_URL}/oauth/callback`;
+    const fail = (reason: string) => res.redirect(`${landing}?error=${reason}`);
+
+    // User cancelled at Google's consent screen, or Google returned an error.
+    if (req.query.error) return fail('denied');
+
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    const state = typeof req.query.state === 'string' ? req.query.state : '';
+    const cookieState = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
+    // One-shot, clear the state cookie whether or not it checks out.
+    res.clearCookie(OAUTH_STATE_COOKIE, { ...stateCookieOptions, maxAge: undefined });
+
+    // The state we planted must come back unchanged, otherwise it's forged.
+    if (!code || !state || !cookieState || state !== cookieState) return fail('state');
+
+    let outcome;
+    try {
+      const profile = await oauthService.fetchProfile(code);
+      outcome = await authService.loginWithGoogle(profile, { userAgent: req.get('user-agent') });
+    } catch (err) {
+      logger.warn('google callback failed', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+      return fail('failed');
+    }
+
+    // Account has 2FA on, pass the short-lived challenge to the client to finish.
+    if ('twoFactorRequired' in outcome) {
+      return res.redirect(`${landing}?twofa=${outcome.challengeToken}`);
+    }
+
+    res.cookie(REFRESH_COOKIE, outcome.tokens.refreshToken, refreshCookieOptions);
+    res.redirect(`${landing}?ok=1`);
+  }),
+
   refresh: catchAsync(async (req: Request, res: Response) => {
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
     if (!token) throw AppError.unauthorized('No refresh token provided');
 
-    const tokens = await authService.refresh(token);
+    const result = await authService.refresh(token, { userAgent: req.get('user-agent') });
 
-    res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
+    // No refreshToken means this call lost a rotation race, the cookie already
+    // holds the live token, so leave it alone.
+    if (result.refreshToken) {
+      res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions);
+    }
     res.status(200).json({
       success: true,
-      data: { accessToken: tokens.accessToken },
+      data: { accessToken: result.accessToken },
     });
   }),
 
-  logout: catchAsync(async (_req: Request, res: Response) => {
+  logout: catchAsync(async (req: Request, res: Response) => {
+    await authService.logout(req.cookies?.[REFRESH_COOKIE] as string | undefined);
     res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions, maxAge: undefined });
     res.status(200).json({ success: true, data: null });
+  }),
+
+  forgotPassword: catchAsync(async (req: Request, res: Response) => {
+    await authService.forgotPassword(req.body.email, req.body.captchaToken);
+    // Identical response whether the account exists or not.
+    res.status(200).json({
+      success: true,
+      data: { message: 'If that email is registered, a reset link is on its way.' },
+    });
+  }),
+
+  resetPassword: catchAsync(async (req: Request, res: Response) => {
+    await authService.resetPassword(req.body.token, req.body.password);
+    res.status(200).json({
+      success: true,
+      data: { message: 'Password updated, you can sign in with it now.' },
+    });
+  }),
+
+  verifyEmail: catchAsync(async (req: Request, res: Response) => {
+    await authService.verifyEmail(req.body.token);
+    res.status(200).json({
+      success: true,
+      data: { message: 'Email verified, thanks for confirming.' },
+    });
+  }),
+
+  // Requires requireAuth before it in the chain.
+  resendVerification: catchAsync(async (req: Request, res: Response) => {
+    await authService.resendVerification(req.user!.sub);
+    res.status(200).json({
+      success: true,
+      data: { message: 'Verification email sent, check your inbox.' },
+    });
   }),
 
   // Requires requireAuth before it in the chain.
@@ -72,5 +200,53 @@ export const authController = {
     if (!user) throw AppError.unauthorized('Account no longer exists');
 
     res.status(200).json({ success: true, data: { user } });
+  }),
+
+  // Requires requireAuth before it in the chain.
+  updateMe: catchAsync(async (req: Request, res: Response) => {
+    const user = await authService.updateProfile(req.user!.sub, req.body);
+    res.status(200).json({ success: true, data: { user } });
+  }),
+
+  // Requires requireAuth + uploadSingle('file', 'image') before it in the chain.
+  updateAvatar: catchAsync(async (req: Request, res: Response) => {
+    if (!req.file) throw AppError.badRequest('No image was uploaded');
+    const user = await authService.updateProfileImage(req.user!.sub, req.file.buffer);
+    res.status(200).json({ success: true, data: { user } });
+  }),
+
+  // Requires requireAuth before it in the chain.
+  changeMyPassword: catchAsync(async (req: Request, res: Response) => {
+    const tokens = await authService.changePassword(req.user!.sub, req.body, {
+      userAgent: req.get('user-agent'),
+    });
+
+    res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions);
+    res.status(200).json({
+      success: true,
+      data: {
+        accessToken: tokens.accessToken,
+        message: 'Password changed successfully.',
+      },
+    });
+  }),
+
+  // 2FA management (all requireAuth)
+  startTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    const data = await authService.startTwoFactorSetup(req.user!.sub);
+    res.status(200).json({ success: true, data });
+  }),
+
+  confirmTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    const { recoveryCodes } = await authService.confirmTwoFactorSetup(req.user!.sub, req.body.code);
+    res.status(200).json({
+      success: true,
+      data: { recoveryCodes, message: 'Two-factor is on. Save these recovery codes somewhere safe.' },
+    });
+  }),
+
+  disableTwoFactor: catchAsync(async (req: Request, res: Response) => {
+    await authService.disableTwoFactor(req.user!.sub, req.body.code);
+    res.status(200).json({ success: true, data: { message: 'Two-factor turned off.' } });
   }),
 };

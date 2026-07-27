@@ -5,7 +5,7 @@ import { isUploadKind } from '@/middlewares/upload';
 import { AppError } from '@/utils/AppError';
 
 export const uploadController = {
-  
+
   upload: catchAsync(async (req: Request, res: Response) => {
     const kind = String(req.params.kind);
     if (!isUploadKind(kind)) throw AppError.badRequest('Unknown upload type');

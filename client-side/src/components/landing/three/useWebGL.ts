@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 /**
  * null while detecting (SSR-safe), then whether WebGL is available and
- * whether motion is allowed — sections use this to mount 3D scenes or
+ * whether motion is allowed, sections use this to mount 3D scenes or
  * fall back to static imagery.
  */
 export function useWebGL() {

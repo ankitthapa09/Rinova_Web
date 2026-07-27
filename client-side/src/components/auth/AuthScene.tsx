@@ -54,8 +54,8 @@ function VehicleRig({ url, length, animate }: RigProps) {
 }
 
 /**
- * Auth-page centerpiece: a single vehicle turntabling on the dark stage,
- * tilting toward the cursor — the hero stage distilled to one panel.
+ * Auth-page centerpiece, a single vehicle turntabling on the dark stage,
+ * tilting toward the cursor, the hero stage distilled to one panel.
  */
 export default function AuthScene({
   url,
@@ -82,7 +82,7 @@ export default function AuthScene({
 
         <VehicleRig url={url} length={length} animate={animate} />
 
-        {/* Procedural studio reflections — no external HDR fetch */}
+        {/* Procedural studio reflections, no external HDR fetch */}
         <Environment resolution={256}>
           <Lightformer intensity={2.6} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 6, 1]} color="#fff8f0" />
           <Lightformer intensity={2} position={[-6, 1, -2]} rotation-y={Math.PI / 2} scale={[7, 1.6, 1]} color="#FF5C1A" />

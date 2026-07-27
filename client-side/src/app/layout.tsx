@@ -17,9 +17,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Rinova — Vehicle Rentals & Washing | Kathmandu, Nepal",
+  title: "Rinova, Vehicle Rentals & Washing | Kathmandu, Nepal",
   description:
-    "Premium vehicle rentals and professional washing in Kathmandu — bikes, cars, SUVs, vans and buses. Rent it. Wash it. Drive on.",
+    "Premium vehicle rentals and professional washing in Kathmandu, bikes, cars, SUVs, vans and buses. Rent it. Wash it. Drive on.",
   keywords: [
     "vehicle rental kathmandu",
     "car rental nepal",

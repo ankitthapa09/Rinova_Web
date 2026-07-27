@@ -9,7 +9,7 @@ export interface ToastItem {
   leaving?: boolean;
 }
 
-// Tiny module-level store — call toast.success()/toast.error() from anywhere,
+// Tiny module-level store, call toast.success()/toast.error() from anywhere,
 // the mounted <Toaster /> re-renders via useSyncExternalStore.
 let toasts: ToastItem[] = [];
 const listeners = new Set<() => void>();

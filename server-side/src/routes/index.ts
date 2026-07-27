@@ -5,6 +5,7 @@ import uploadRoutes from '@/routes/upload.routes';
 import userRoutes from '@/routes/user.routes';
 import bookingRoutes from '@/routes/booking.routes';
 import washOrderRoutes from '@/routes/washOrder.routes';
+import notificationRoutes from '@/routes/notification.routes';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/uploads', uploadRoutes);
 router.use('/users', userRoutes);
 router.use('/bookings', bookingRoutes);
 router.use('/wash', washOrderRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;

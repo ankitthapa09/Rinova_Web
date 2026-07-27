@@ -1,25 +1,238 @@
-import { User, type IUser, type UserDocument } from '@/models/user.model';
+import {
+  User,
+  MAX_SESSIONS,
+  type IUser,
+  type UserDocument,
+  type RefreshSession,
+} from '@/models/user.model';
 
- // Data-access layer for users — the only place that queries the User model.
+ // Data-access layer for users, the only place that queries the User model.
 
 export type CreateUserData = Pick<IUser, 'name' | 'email' | 'phone' | 'address' | 'password'>;
+
+/** A Google sign-up, no password or contact details yet, email already proven. */
+export type CreateOAuthUserData = { name: string; email: string; googleId: string };
 
 export const userRepository = {
   create(data: CreateUserData): Promise<UserDocument> {
     return User.create(data);
   },
 
+  /** Creates a Google-backed account. Email is trusted (Google verified it),
+   * so it's marked verified and no password is set. */
+  createOAuthUser(data: CreateOAuthUserData): Promise<UserDocument> {
+    return User.create({
+      name: data.name,
+      email: data.email,
+      googleId: data.googleId,
+      authProvider: 'google',
+      isEmailVerified: true,
+    });
+  },
+
+  /** Links a Google id to an existing account and trusts its now-verified email.
+   * Safe because Google has proven ownership of an address the account owns. */
+  async linkGoogle(id: string, googleId: string): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { googleId, isEmailVerified: true } }).exec();
+  },
+
   findByEmail(email: string): Promise<UserDocument | null> {
     return User.findOne({ email }).exec();
   },
 
-  // Login path only - includes the password hash for comparison.
+  // Login path only - includes the password hash and lockout state.
   findByEmailWithPassword(email: string): Promise<UserDocument | null> {
-    return User.findOne({ email }).select('+password').exec();
+    return User.findOne({ email }).select('+password +failedLoginAttempts +lockUntil').exec();
+  },
+
+  /** $inc so parallel wrong guesses can't lose updates. Returns the new total. */
+  async recordFailedLogin(id: string): Promise<number> {
+    const user = await User.findByIdAndUpdate(
+      id,
+      { $inc: { failedLoginAttempts: 1 } },
+      { new: true },
+    )
+      .select('+failedLoginAttempts')
+      .exec();
+    return user?.failedLoginAttempts ?? 0;
+  },
+
+  async lockAccount(id: string, until: Date): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      { $set: { lockUntil: until, failedLoginAttempts: 0 } },
+    ).exec();
+  },
+
+  async clearLoginFailures(id: string): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      { $unset: { failedLoginAttempts: 1, lockUntil: 1 } },
+    ).exec();
   },
 
   findById(id: string): Promise<UserDocument | null> {
     return User.findById(id).exec();
+  },
+
+  /** Ids of every admin, used to fan notifications out to the whole desk. */
+  async findAdminIds(): Promise<string[]> {
+    const admins = await User.find({ role: 'admin' }).select('_id').lean().exec();
+    return admins.map((a) => String(a._id));
+  },
+
+  /** Self-service profile edit, only the contact fields, never email or role. */
+  updateProfile(
+    id: string,
+    data: Pick<IUser, 'name' | 'phone' | 'address'>,
+  ): Promise<UserDocument | null> {
+    return User.findByIdAndUpdate(id, data, { new: true, runValidators: true }).exec();
+  },
+
+  /** Includes the Cloudinary publicId (select:false) so the old photo can be deleted. */
+  findByIdWithImageId(id: string): Promise<UserDocument | null> {
+    return User.findById(id).select('+profileImagePublicId').exec();
+  },
+
+  setProfileImage(id: string, url: string, publicId: string): Promise<UserDocument | null> {
+    return User.findByIdAndUpdate(
+      id,
+      { profileImageUrl: url, profileImagePublicId: publicId },
+      { new: true },
+    ).exec();
+  },
+
+  findByIdWithPasswordChangedAt(id: string): Promise<UserDocument | null> {
+    return User.findById(id).select('+passwordChangedAt').exec();
+  },
+
+  findByIdWithSessions(id: string): Promise<UserDocument | null> {
+    return User.findById(id).select('+passwordChangedAt +refreshSessions').exec();
+  },
+
+  findByIdWithPasswordSecurity(id: string): Promise<UserDocument | null> {
+    return User.findById(id).select('+password +passwordHistory +refreshSessions').exec();
+  },
+
+  /** Loads the 2FA secrets, never selected by default. */
+  findByIdWith2FA(id: string): Promise<UserDocument | null> {
+    return User.findById(id)
+      .select('+twoFactorSecret +twoFactorRecoveryCodes +twoFactorLastUsedStep')
+      .exec();
+  },
+
+  /** Stores a secret during setup, 2FA stays OFF until a code confirms it. */
+  async setTwoFactorSecret(id: string, secret: string): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { twoFactorSecret: secret } }).exec();
+  },
+
+  /** Flips 2FA on once a code verified, saving the hashed recovery codes. */
+  async enableTwoFactor(id: string, recoveryHashes: string[]): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      { $set: { twoFactorEnabled: true, twoFactorRecoveryCodes: recoveryHashes } },
+    ).exec();
+  },
+
+  /** Records the last accepted TOTP step, blocking replay of that code. */
+  async setTwoFactorStep(id: string, step: number): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { twoFactorLastUsedStep: step } }).exec();
+  },
+
+  /** Burns a used recovery code so it can't work twice. */
+  async setRecoveryCodes(id: string, hashes: string[]): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { twoFactorRecoveryCodes: hashes } }).exec();
+  },
+
+  /** Turns 2FA off and wipes every trace of it. */
+  async disableTwoFactor(id: string): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      {
+        $set: { twoFactorEnabled: false },
+        $unset: {
+          twoFactorSecret: 1,
+          twoFactorRecoveryCodes: 1,
+          twoFactorLastUsedStep: 1,
+        },
+      },
+    ).exec();
+  },
+
+  /** Adds a session, evicting the oldest past MAX_SESSIONS. */
+  async addSession(id: string, session: RefreshSession): Promise<void> {
+    await User.updateOne(
+      { _id: id },
+      {
+        $push: {
+          refreshSessions: {
+            $each: [session],
+            $sort: { createdAt: 1 },
+            $slice: -MAX_SESSIONS,
+          },
+        },
+      },
+    ).exec();
+  },
+
+  /**
+   * Rotation as a compare-and-swap, only advances if the family is still on
+   * `expectedHash`. Two simultaneous refreshes both match the same token, but
+   * only the first update finds it, the loser gets false and must not rotate,
+   * or the two would diverge and orphan the caller's token.
+ */
+  async rotateSession(
+    id: string,
+    family: string,
+    expectedHash: string,
+    session: RefreshSession,
+  ): Promise<boolean> {
+    const res = await User.updateOne(
+      { _id: id, refreshSessions: { $elemMatch: { family, tokenHash: expectedHash } } },
+      {
+        $set: {
+          'refreshSessions.$.tokenHash': session.tokenHash,
+          'refreshSessions.$.previousTokenHash': expectedHash,
+          'refreshSessions.$.rotatedAt': new Date(),
+          'refreshSessions.$.expiresAt': session.expiresAt,
+          'refreshSessions.$.userAgent': session.userAgent,
+        },
+      },
+    ).exec();
+    return res.matchedCount > 0;
+  },
+
+  /** Logout / reuse, remove one family's session. */
+  async removeSessionByFamily(id: string, family: string): Promise<void> {
+    await User.updateOne({ _id: id }, { $pull: { refreshSessions: { family } } }).exec();
+  },
+
+  /** Reuse detected / logout-everywhere, drop every session. */
+  async clearAllSessions(id: string): Promise<void> {
+    await User.updateOne({ _id: id }, { $set: { refreshSessions: [] } }).exec();
+  },
+
+  findByEmailForReset(email: string): Promise<UserDocument | null> {
+    return User.findOne({ email }).select('+passwordResetToken +passwordResetExpires').exec();
+  },
+
+  findByValidVerificationTokenHash(tokenHash: string): Promise<UserDocument | null> {
+    return User.findOne({
+      emailVerificationToken: tokenHash,
+      emailVerificationExpires: { $gt: new Date() },
+    })
+      .select('+emailVerificationToken +emailVerificationExpires')
+      .exec();
+  },
+
+  /** Matches an emailed token's hash, only while unexpired. */
+  findByValidResetTokenHash(tokenHash: string): Promise<UserDocument | null> {
+    return User.findOne({
+      passwordResetToken: tokenHash,
+      passwordResetExpires: { $gt: new Date() },
+    })
+      .select('+passwordResetToken +passwordResetExpires +password +passwordHistory')
+      .exec();
   },
 
   existsByEmail(email: string): Promise<boolean> {
@@ -32,7 +245,7 @@ export const userRepository = {
 
   // Admin
 
-  /** Everyone, newest first — password stays excluded by its select:false. */
+  /** Everyone, newest first, password stays excluded by its select:false. */
   findAll(): Promise<UserDocument[]> {
     return User.find().sort({ createdAt: -1 }).exec();
   },

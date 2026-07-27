@@ -5,7 +5,7 @@ export type VehicleCategory = (typeof VEHICLE_CATEGORIES)[number];
 
 export interface IVehicle {
   name: string;
-  /** URL identity — unique, lowercase, hyphenated (e.g. honda-cb750) */
+  /** URL identity, unique, lowercase, hyphenated (e.g. honda-cb750) */
   slug: string;
   category: VehicleCategory;
   tagline: string;
@@ -15,17 +15,17 @@ export interface IVehicle {
     transmission?: 'Manual' | 'Automatic';
     fuel: string;
     topSpeed?: string;
-    /** Combustion only — engine displacement in cc */
+    /** Combustion only, engine displacement in cc */
     engineCC?: number;
-    /** EV only — driving range on a full charge, in km */
+    /** EV only, driving range on a full charge, in km */
     range?: number;
-    /** EV only — battery capacity in kWh */
+    /** EV only, battery capacity in kWh */
     batteryCapacity?: number;
   };
   imageUrl: string;
-  /** Photo gallery, up to 4 — images[0] is the cover and mirrors imageUrl */
+  /** Photo gallery, up to 4, images[0] is the cover and mirrors imageUrl */
   images: string[];
-  /** Optional 3D showcase — detail page falls back to the cover photo without it */
+  /** Optional 3D showcase, detail page falls back to the cover photo without it */
   modelUrl?: string;
   /** Normalized world length for the client's 3D loader (only with modelUrl) */
   modelLength?: number;
@@ -80,9 +80,9 @@ const vehicleSchema = new Schema<IVehicle, VehicleModel>(
       transmission: { type: String, enum: ['Manual', 'Automatic'] },
       fuel: { type: String, required: [true, 'Fuel type is required'], trim: true },
       topSpeed: { type: String, trim: true },
-      // Combustion only — engine size in cc
+      // Combustion only, engine size in cc
       engineCC: { type: Number, min: 0, max: 10000 },
-      // EV-only extras — left unset for combustion vehicles
+      // EV-only extras, left unset for combustion vehicles
       range: { type: Number, min: 0, max: 2000 },
       batteryCapacity: { type: Number, min: 0, max: 500 },
     },

@@ -12,6 +12,7 @@ import {
 } from "@/lib/washApi";
 import { CATEGORY_LABELS, formatNpr } from "@/lib/vehicleApi";
 import { ApiError } from "@/lib/api";
+import { useFocusItem } from "@/lib/useFocusItem";
 import { toast } from "@/components/ui/toast";
 
 const STATUS_STYLES: Record<WashOrderStatus, string> = {
@@ -22,8 +23,8 @@ const STATUS_STYLES: Record<WashOrderStatus, string> = {
   cancelled: "border border-line text-fog/60 line-through",
 };
 
-/** Confirmed work and finished work both occupy a bay — the same rule the
- *  server counts by. Pending requests are only queued. */
+/** Confirmed work and finished work both occupy a bay, the same rule the
+ * server counts by. Pending requests are only queued. */
 function holdsABay(order: WashOrder): boolean {
   return order.status === "confirmed" || order.status === "completed";
 }
@@ -55,6 +56,7 @@ function customer(order: WashOrder): WashOrderUser | null {
 
 export default function WashesManager() {
   const [orders, setOrders] = useState<WashOrder[] | null>(null);
+  useFocusItem(orders);
   const [catalogue, setCatalogue] = useState<WashCatalogue | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export default function WashesManager() {
       toast.success(`${order.packageName} for ${order.plateNumber} ${verb}.`);
       await reload();
     } catch (e) {
-      // e.g. 409 — every bay in that slot filled up while this sat pending
+      // e.g. 409, every bay in that slot filled up while this sat pending
       toast.error(e instanceof ApiError ? e.message : "Couldn't update the wash order.");
       await reload();
     } finally {
@@ -94,7 +96,7 @@ export default function WashesManager() {
 
   const pendingCount = (orders ?? []).filter((o) => o.status === "pending").length;
 
-  // The morning view: who's rolling in, and into which bay.
+  // The morning view, who's rolling in, and into which bay.
   const dayBoard = useMemo(() => {
     if (!catalogue) return null;
     const booked = (orders ?? []).filter((o) => holdsABay(o) && dayKey(o.scheduledDate) === day);
@@ -118,7 +120,7 @@ export default function WashesManager() {
         </h1>
       </header>
 
-      {/* ── The day board ─────────────────────────────────────── */}
+      {/* The day board */}
       {catalogue && dayBoard ? (
         <section className="mt-10 rounded-2xl border border-line bg-surface/60 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -173,7 +175,7 @@ export default function WashesManager() {
         </section>
       ) : null}
 
-      {/* ── The queue ─────────────────────────────────────────── */}
+      {/* The queue */}
       <div className="mt-10">
         {orders === null ? (
           <div className="flex min-h-[240px] items-center justify-center">
@@ -202,7 +204,8 @@ export default function WashesManager() {
               return (
                 <li
                   key={order._id}
-                  className="flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4"
+                  id={`item-${order._id}`}
+                  className="flex scroll-mt-28 flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface/60 p-4 transition duration-500 data-[focus=true]:ring-2 data-[focus=true]:ring-accent"
                 >
                   <div className="min-w-[220px] flex-1">
                     <p className="truncate text-[14px] text-cream">
@@ -218,7 +221,7 @@ export default function WashesManager() {
                       <span className="text-cream">{formatNpr(order.price)}</span>
                     </p>
                     <p className="truncate text-[12px] text-fog">
-                      {who ? `${who.name} · ${who.phone}` : "—"}
+                      {who ? `${who.name} · ${who.phone}` : "-"}
                       {order.notes ? <span className="italic"> · “{order.notes}”</span> : null}
                     </p>
                   </div>

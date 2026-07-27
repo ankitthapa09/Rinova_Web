@@ -1,28 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gsap, MOTION_OK } from "@/components/landing/gsap";
 import { authApi, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/useAuth";
 import { toast } from "@/components/ui/toast";
+import CaptchaWidget from "./CaptchaWidget";
 import FloatingInput from "./FloatingInput";
 import MagneticSubmit, { type SubmitStatus } from "./MagneticSubmit";
+import PasswordStrength, { passwordMeetsRules } from "./PasswordStrength";
+import SocialAuth from "./SocialAuth";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^9[78]\d{8}$/;
-
-const STRENGTH_LABELS = ["", "Weak", "Fair", "Good", "Strong"];
-
-/** 0–4: length, upper+lower mix, digit, symbol */
-function passwordScore(pw: string): number {
-  if (!pw) return 0;
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
-  if (/\d/.test(pw)) score++;
-  if (/[^a-zA-Z0-9]/.test(pw)) score++;
-  return score;
-}
 
 interface Fields {
   name: string;
@@ -33,7 +24,11 @@ interface Fields {
   confirm: string;
 }
 
-export default function SignupForm() {
+interface SignupFormProps {
+  siteKey?: string;
+}
+
+export default function SignupForm({ siteKey }: SignupFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [fields, setFields] = useState<Fields>({
@@ -45,10 +40,17 @@ export default function SignupForm() {
     confirm: "",
   });
   const [terms, setTerms] = useState(false);
-  const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms", string>>>({});
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const [errors, setErrors] = useState<Partial<Record<keyof Fields | "terms" | "captcha", string>>>({});
   const [status, setStatus] = useState<SubmitStatus>("idle");
+  // Already signed in? Skip the form rather than offering a second account.
+  const { user: session, loading: sessionLoading } = useAuth(true);
 
-  const score = passwordScore(fields.password);
+  useEffect(() => {
+    if (sessionLoading || !session) return;
+    router.replace(session.role === "admin" ? "/admin" : "/dashboard");
+  }, [sessionLoading, session, router]);
 
   const set = (key: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setFields((f) => ({ ...f, [key]: e.target.value }));
@@ -71,10 +73,12 @@ export default function SignupForm() {
     if (!EMAIL_RE.test(fields.email)) next.email = "Enter a valid email address.";
     if (!PHONE_RE.test(fields.phone)) next.phone = "Enter a valid 10-digit mobile (98XXXXXXXX).";
     if (fields.address.trim().length < 3) next.address = "Enter your address.";
-    if (fields.password.length < 8) next.password = "Use at least 8 characters.";
+    if (!passwordMeetsRules(fields.password))
+      next.password = "Password doesn't meet all the requirements yet.";
     if (fields.confirm !== fields.password || !fields.confirm)
       next.confirm = "Passwords don't match.";
     if (!terms) next.terms = "Please accept the terms to continue.";
+    if (!captchaToken) next.captcha = "Complete the captcha challenge.";
     setErrors(next);
     if (Object.keys(next).length > 0) {
       shake();
@@ -89,14 +93,21 @@ export default function SignupForm() {
         phone: fields.phone,
         address: fields.address.trim(),
         password: fields.password,
+        captchaToken: captchaToken ?? undefined,
       });
       setStatus("success");
       toast.success(`Welcome to the garage, ${user.name.split(" ")[0]}.`);
-      window.setTimeout(() => router.push("/dashboard"), 900);
+      // replace so Back skips the signup page instead of returning to it
+      window.setTimeout(() => router.replace("/dashboard"), 900);
     } catch (err) {
       setStatus("idle");
+      setCaptchaReset((value) => value + 1);
+      setCaptchaToken(null);
       if (err instanceof ApiError) {
-        setErrors(err.fieldErrors);
+        setErrors({
+          ...err.fieldErrors,
+          captcha: err.fieldErrors.captchaToken,
+        });
         if (Object.keys(err.fieldErrors).length === 0) toast.error(err.message);
       } else {
         toast.error("Something went wrong. Please try again.");
@@ -106,7 +117,9 @@ export default function SignupForm() {
   };
 
   return (
-    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+      <SocialAuth label="Sign up with Google" />
+
       <FloatingInput
         id="name"
         label="Full name"
@@ -152,22 +165,7 @@ export default function SignupForm() {
           onChange={set("password")}
           error={errors.password}
         />
-        {/* Strength meter: four segments fill as the password hardens */}
-        <div data-auth-item className="mt-3 flex items-center gap-3" aria-hidden={!fields.password}>
-          <div className="flex flex-1 gap-1.5">
-            {[1, 2, 3, 4].map((step) => (
-              <span
-                key={step}
-                className={`h-[3px] flex-1 rounded-full transition-all duration-500 ease-expo ${
-                  fields.password && score >= step ? "bg-accent" : "bg-cream/10"
-                }`}
-              />
-            ))}
-          </div>
-          <span className="w-12 text-right text-[10px] uppercase tracking-[0.15em] text-fog">
-            {fields.password ? STRENGTH_LABELS[score] : ""}
-          </span>
-        </div>
+        <PasswordStrength password={fields.password} />
       </div>
 
       <FloatingInput
@@ -179,6 +177,13 @@ export default function SignupForm() {
         onChange={set("confirm")}
         error={errors.confirm}
       />
+
+      <div data-auth-item>
+        <CaptchaWidget siteKey={siteKey} resetSignal={captchaReset} onTokenChange={setCaptchaToken} />
+        {errors.captcha ? (
+          <p className="mt-2 text-xs text-accent">{errors.captcha}</p>
+        ) : null}
+      </div>
 
       <div data-auth-item>
         <label className="flex cursor-pointer items-start gap-2.5 text-[13px] leading-relaxed text-fog transition-colors hover:text-cream">

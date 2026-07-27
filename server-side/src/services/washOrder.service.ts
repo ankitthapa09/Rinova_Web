@@ -1,5 +1,7 @@
 import { Types } from 'mongoose';
 import { washOrderRepository } from '@/repositories/washOrder.repository';
+import { userRepository } from '@/repositories/user.repository';
+import { notificationService } from '@/services/notification.service';
 import { AppError } from '@/utils/AppError';
 import { logger } from '@/config/logger';
 import {
@@ -16,8 +18,8 @@ import type {
   UpdateWashOrderStatusInput,
 } from '@/validators/washOrder.validator';
 
-/** Midnight of a given day — every order is stored flat, so every lookup must
- *  ask flat too. */
+/** Midnight of a given day, every order is stored flat, so every lookup must
+ * ask flat too. */
 function dayStart(date: Date): Date {
   const day = new Date(date);
   day.setHours(0, 0, 0, 0);
@@ -35,12 +37,12 @@ function slotStart(day: Date, slot: WashSlot): Date {
 export interface SlotAvailability {
   slot: WashSlot;
   baysLeft: number;
-  /** Bookable right now — has a free bay and hasn't already come round today */
+  /** Bookable right now, has a free bay and hasn't already come round today */
   available: boolean;
 }
 
 export const washOrderService = {
-  /** The public menu — packages, arrival times, bay count. */
+  /** The public menu, packages, arrival times, bay count. */
   catalogue() {
     return {
       packages: WASH_PACKAGES,
@@ -50,7 +52,7 @@ export const washOrderService = {
     };
   },
 
-  /** What the slot picker draws: for one day, how much room is left in each slot. */
+  /** What the slot picker draws, for one day, how much room is left in each slot. */
   async availability(date: Date): Promise<SlotAvailability[]> {
     const day = dayStart(date);
     const taken = await washOrderRepository.countBaysBySlot(day);
@@ -66,15 +68,15 @@ export const washOrderService = {
     });
   },
 
-  /** Customer books a wash. The price is looked up here, from the catalogue —
-   *  whatever the client sent is irrelevant, it never reaches us. */
+  /** Customer books a wash. The price is looked up here, from the catalogue -
+   * whatever the client sent is irrelevant, it never reaches us. */
   async create(userId: string, input: CreateWashOrderInput): Promise<WashOrderDocument> {
     const pkg = findWashPackage(input.packageId);
     if (!pkg) throw AppError.notFound('Wash package not found');
 
     const day = dayStart(input.scheduledDate);
 
-    // One wash a day per vehicle — cancel the first to move it.
+    // One wash a day per vehicle, cancel the first to move it.
     const existing = await washOrderRepository.findLiveForPlateOnDay(input.plateNumber, day);
     if (existing) {
       throw AppError.conflict('That vehicle is already booked in for a wash that day');
@@ -83,7 +85,7 @@ export const washOrderService = {
     // Confirmed work holds a bay; pending requests queue behind it.
     const taken = await washOrderRepository.countBaysTaken(day, input.slot);
     if (taken >= WASH_BAYS_PER_SLOT) {
-      throw AppError.conflict('That arrival time is fully booked — pick another');
+      throw AppError.conflict('That arrival time is fully booked, pick another');
     }
 
     const order = await washOrderRepository.create({
@@ -105,6 +107,9 @@ export const washOrderService = {
       package: pkg.id,
       slot: input.slot,
     });
+
+    const customer = await userRepository.findById(userId);
+    await notificationService.washCreated(order, { customerName: customer?.name ?? 'A customer' });
     return order;
   },
 
@@ -113,16 +118,16 @@ export const washOrderService = {
     return washOrderRepository.findByUser(userId);
   },
 
-  /** Admin — every order, customer joined in. */
+  /** Admin, every order, customer joined in. */
   listAll(): Promise<WashOrderDocument[]> {
     return washOrderRepository.findAll();
   },
 
   /**
-   * Admin moves an order along. Approving re-checks the bays: several pending
+   * Admin moves an order along. Approving re-checks the bays, several pending
    * requests can be queued on the same slot, and only the first three approved
    * can actually be washed.
-   */
+ */
   async updateStatus(id: string, input: UpdateWashOrderStatusInput): Promise<WashOrderDocument> {
     const order = await washOrderRepository.findById(id);
     if (!order) throw AppError.notFound('Wash order not found');
@@ -152,11 +157,13 @@ export const washOrderService = {
     order.status = input.status;
     await order.save();
     logger.info('wash order resolved', { orderId: order.id, status: input.status });
+
+    await notificationService.washResolved(order);
     return order;
   },
 
   /** Customer cancels their own order, up until the wash begins. Someone else's
-   *  order 404s rather than 403s, so ids can't be probed for existence. */
+   * order 404s rather than 403s, so ids can't be probed for existence. */
   async cancel(id: string, userId: string): Promise<WashOrderDocument> {
     const order = await washOrderRepository.findById(id);
     if (!order || String(order.user) !== userId) throw AppError.notFound('Wash order not found');
@@ -171,6 +178,9 @@ export const washOrderService = {
     order.status = 'cancelled';
     await order.save();
     logger.info('wash order cancelled by customer', { orderId: order.id, userId });
+
+    const customer = await userRepository.findById(userId);
+    await notificationService.washCancelled(order, { customerName: customer?.name ?? 'A customer' });
     return order;
   },
 };

@@ -8,6 +8,10 @@ export interface ApiUser {
   address: string;
   role: "user" | "admin";
   isEmailVerified: boolean;
+  twoFactorEnabled: boolean;
+  /** How the account signs in, "google" accounts may have no password. */
+  authProvider?: "local" | "google";
+  profileImageUrl?: string;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -17,20 +21,39 @@ export interface ApiUser {
 export class ApiError extends Error {
   status: number;
   fieldErrors: Record<string, string>;
+  /** Seconds to wait before retrying, set on lockout (423) / rate-limit (429). */
+  retryAfter?: number;
 
-  constructor(status: number, message: string, fieldErrors: Record<string, string> = {}) {
+  constructor(
+    status: number,
+    message: string,
+    fieldErrors: Record<string, string> = {},
+    retryAfter?: number,
+  ) {
     super(message);
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.retryAfter = retryAfter;
   }
 }
 
-// Access token lives in memory only — nothing readable in localStorage for
+// Access token lives in memory only, nothing readable in localStorage for
 // XSS to lift. The refresh token is an httpOnly cookie the browser manages.
 let accessToken: string | null = null;
+// Shared promise while a refresh is in flight, see authApi.refresh().
+let refreshInFlight: Promise<void> | null = null;
 
 export function getAccessToken(): string | null {
   return accessToken;
+}
+
+/**
+ * Absolute URL that kicks off Google sign-in. This is a full-page navigation
+ * (`window.location.href = …`), not a fetch, the server redirects the browser
+ * to Google's consent screen and later back to /oauth/callback.
+ */
+export function googleAuthUrl(): string {
+  return `${BASE_URL}/auth/oauth/google`;
 }
 
 // Non-sensitive flag so anonymous visitors don't fire doomed refresh calls
@@ -52,6 +75,14 @@ interface ServerEnvelope<T> {
   data: T;
   message?: string;
   errors?: { field: string; message: string }[];
+  retryAfter?: number;
+}
+
+/** Prefer the body's retryAfter, fall back to the standard Retry-After header. */
+function readRetryAfter(res: Response, body: { retryAfter?: number } | null): number | undefined {
+  if (typeof body?.retryAfter === "number") return body.retryAfter;
+  const header = Number(res.headers.get("Retry-After"));
+  return Number.isFinite(header) && header > 0 ? header : undefined;
 }
 
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -59,7 +90,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       ...init,
-      // Send/receive the auth cookie across origins (localhost:3002 → :4000)
+      // Send/receive the auth cookie across origins (localhost:3002 to :4000)
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
@@ -77,7 +108,12 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     const fieldErrors = Object.fromEntries(
       (json?.errors ?? []).map((e) => [e.field, e.message]),
     );
-    throw new ApiError(res.status, json?.message ?? "Something went wrong", fieldErrors);
+    throw new ApiError(
+      res.status,
+      json?.message ?? "Something went wrong",
+      fieldErrors,
+      readRetryAfter(res, json),
+    );
   }
 
   return json.data;
@@ -89,14 +125,37 @@ export interface RegisterInput {
   phone: string;
   address: string;
   password: string;
+  captchaToken?: string;
 }
 
 export interface LoginInput {
   email: string;
   password: string;
+  captchaToken?: string;
 }
 
 type AuthData = { user: ApiUser; accessToken: string };
+
+/**
+ * A normal login either signs you in, or, when 2FA is on, hands back a
+ * short-lived challenge and asks for a code. The caller branches on
+ * `twoFactorRequired`.
+ */
+export type LoginResult =
+  | { user: ApiUser }
+  | { twoFactorRequired: true; challengeToken: string };
+
+// Raw server payload for /auth/login, one of the two shapes above, but with
+// the tokens the client keeps to itself.
+type LoginData =
+  | { user: ApiUser; accessToken: string }
+  | { twoFactorRequired: true; challengeToken: string };
+
+/** What the enable step returns, the one-time recovery codes to save. */
+export interface TwoFactorSetup {
+  secret: string;
+  qrDataUrl: string;
+}
 
 export const authApi = {
   async register(input: RegisterInput): Promise<ApiUser> {
@@ -109,10 +168,25 @@ export const authApi = {
     return data.user;
   },
 
-  async login(input: LoginInput): Promise<ApiUser> {
-    const data = await request<AuthData>("/auth/login", {
+  async login(input: LoginInput): Promise<LoginResult> {
+    const data = await request<LoginData>("/auth/login", {
       method: "POST",
       body: JSON.stringify(input),
+    });
+    // 2FA is on, no session yet. Pass the challenge back for the code step.
+    if ("twoFactorRequired" in data) {
+      return { twoFactorRequired: true, challengeToken: data.challengeToken };
+    }
+    accessToken = data.accessToken;
+    setSessionHint(true);
+    return { user: data.user };
+  },
+
+  /** Second login step, exchange the challenge + a TOTP/recovery code for a session. */
+  async twoFactorLogin(challengeToken: string, code: string): Promise<ApiUser> {
+    const data = await request<AuthData>("/auth/login/2fa", {
+      method: "POST",
+      body: JSON.stringify({ challengeToken, code }),
     });
     accessToken = data.accessToken;
     setSessionHint(true);
@@ -125,19 +199,145 @@ export const authApi = {
     setSessionHint(false);
   },
 
-  /** Restores a session from the refresh cookie (e.g. after a page reload). */
-  async refresh(): Promise<void> {
-    try {
-      const data = await request<{ accessToken: string }>("/auth/refresh", { method: "POST" });
-      accessToken = data.accessToken;
-      setSessionHint(true);
-    } catch (err) {
-      setSessionHint(false);
-      throw err;
-    }
+  /**
+   * Restores a session from the refresh cookie (e.g. after a page reload).
+   *
+   * Single-flight, parallel callers share one request. Refresh tokens rotate,
+   * so a second simultaneous call would present a token the first already
+   * replaced, indistinguishable from a stolen token being replayed, which
+   * revokes every session. React's dev StrictMode double-invokes effects, so
+   * this is the normal case, not an edge case.
+ */
+  refresh(): Promise<void> {
+    if (refreshInFlight) return refreshInFlight;
+
+    refreshInFlight = (async () => {
+      try {
+        const data = await request<{ accessToken: string }>("/auth/refresh", { method: "POST" });
+        accessToken = data.accessToken;
+        setSessionHint(true);
+      } catch (err) {
+        setSessionHint(false);
+        throw err;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+
+    return refreshInFlight;
   },
 
   me(): Promise<{ user: ApiUser }> {
     return request<{ user: ApiUser }>("/auth/me");
+  },
+
+  /** Updates the signed-in user's own contact details (name, phone, address). */
+  async updateProfile(input: {
+    name: string;
+    phone: string;
+    address: string;
+  }): Promise<ApiUser> {
+    const { user } = await request<{ user: ApiUser }>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    return user;
+  },
+
+  /** Uploads a new profile photo (multipart, not the JSON `request` helper). */
+  async updateAvatar(file: File): Promise<ApiUser> {
+    const form = new FormData();
+    form.append("file", file);
+
+    let res: Response;
+    try {
+      // No Content-Type header, the browser sets the multipart boundary itself.
+      res = await fetch(`${BASE_URL}/auth/me/avatar`, {
+        method: "POST",
+        credentials: "include",
+        headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+        body: form,
+      });
+    } catch {
+      throw new ApiError(0, "Can't reach the server. Is it running?");
+    }
+
+    const json = (await res.json().catch(() => null)) as ServerEnvelope<{ user: ApiUser }> | null;
+    if (!res.ok || !json?.success) {
+      const fieldErrors = Object.fromEntries((json?.errors ?? []).map((e) => [e.field, e.message]));
+      throw new ApiError(res.status, json?.message ?? "Upload failed", fieldErrors);
+    }
+    return json.data.user;
+  },
+
+  /** Changes the signed-in user's password and rotates auth tokens. */
+  async changePassword(currentPassword: string, newPassword: string): Promise<string> {
+    const data = await request<{ message: string; accessToken: string }>("/auth/me/password", {
+      method: "PATCH",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    accessToken = data.accessToken;
+    setSessionHint(true);
+    return data.message;
+  },
+
+  /** Requests a reset link, the server never says whether the email exists. */
+  async forgotPassword(email: string, captchaToken?: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email, captchaToken }),
+    });
+    return message;
+  },
+
+  /** Sets a new password using the token from the emailed link. */
+  async resetPassword(token: string, password: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+    });
+    return message;
+  },
+
+  /** Confirms an email with the token from the verification link. */
+  async verifyEmail(token: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
+    return message;
+  },
+
+  /** Fresh verification link for the signed-in user. */
+  async resendVerification(): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/resend-verification", {
+      method: "POST",
+    });
+    return message;
+  },
+
+  // Two-factor management (signed-in user)
+
+  /** Begins setup, reserves a secret and returns a QR + manual key to scan. */
+  startTwoFactorSetup(): Promise<TwoFactorSetup> {
+    return request<TwoFactorSetup>("/auth/2fa/setup", { method: "POST" });
+  },
+
+  /** Confirms a scanned code and flips 2FA on, returns the one-time recovery codes. */
+  async confirmTwoFactorSetup(code: string): Promise<string[]> {
+    const { recoveryCodes } = await request<{ recoveryCodes: string[] }>("/auth/2fa/enable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    return recoveryCodes;
+  },
+
+  /** Turns 2FA off, needs a fresh code to prove it's really the account owner. */
+  async disableTwoFactor(code: string): Promise<string> {
+    const { message } = await request<{ message: string }>("/auth/2fa/disable", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    return message;
   },
 };

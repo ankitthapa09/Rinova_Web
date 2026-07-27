@@ -8,7 +8,7 @@ import { useReveal } from "./useReveal";
 const QUOTES = [
   {
     quote:
-      "Rented a jeep for a week in the hills — spotless, serviced, and the handover took ten minutes. This is how it should work everywhere.",
+      "Rented a jeep for a week in the hills, spotless, serviced, and the handover took ten minutes. This is how it should work everywhere.",
     name: "Ramesh Shrestha",
     role: "Frequent renter",
   },
